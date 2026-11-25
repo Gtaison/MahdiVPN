@@ -4985,9 +4985,6 @@
     <string name="fenix_step_tunnel">Построение туннеля…</string>
     <string name="fenix_step_check">Проверка подключения…</string>
     <string name="fenix_ms">%1$s мс</string>
-    <string name="fenix_mae_section">MAE</string>
-    <string name="fenix_mae_toggle">Использовать в MAE</string>
-    <string name="fenix_mae_footer">MAE тоже может использовать FENIX как зарубежный выход и проверяет его для каждого приложения отдельно.</string>
     <string name="fenix_fastest">Самая быстрая страна</string>
     <string name="fenix_fastest_detail">Автоматически, по пингу с вашего подключения</string>
     <string name="fenix_recommended">Выбор Mozilla</string>
@@ -5404,7 +5401,6 @@
     <string name="tgproxy_title">Прокси Telegram</string>
     <string name="home_widgetstudio">Widget Studio</string>
     <string name="widget_method_desc">Одно нажатие для подключения или отключения</string>
-    <string name="widget_gereh_desc">Новые сообщения Gereh — в одно нажатие</string>
     <string name="widget_studio_desc">Ваш собственный дизайн, созданный в Widget Studio</string>
     <string name="widget_studio_small">Widget Studio · Маленький</string>
     <string name="widget_studio_medium">Widget Studio · Средний</string>
