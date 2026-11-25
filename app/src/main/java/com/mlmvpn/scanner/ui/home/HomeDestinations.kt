@@ -158,8 +158,6 @@ object HomeDestinations {
         HomeApp("masque",            R.string.home_masque,        Icons.Default.Bolt,          Blue, imageRes = R.drawable.ic_app_masque),
         HomeApp("wireguard",         R.string.home_wireguard,     Icons.Default.VpnKey,        Green, imageRes = R.drawable.ic_app_wireguard),
         HomeApp("warp_on_warp",      R.string.home_warp_on_warp,  Icons.Default.Layers,        Orange, glyphRes = R.drawable.ic_glyph_layers),
-        // «وارپ»: plain WARP on an engine of its own, with the desktop's artwork.
-        HomeApp("warp",              R.string.home_warp,          Icons.Default.Cloud,         Teal,   imageRes = R.drawable.ic_app_warp),
         // Psiphon's own mark, seated on the app's squircle in the red the mark is already
         // painted in -- so the disc's edge disappears into the tile instead of reading as a
         // circle in a square hole. Hub/Indigo stay as the fallback glyph; see HomeApp.imageRes.
@@ -174,9 +172,7 @@ object HomeDestinations {
         // «گف»: Geph's own network and engine, with the Windows desktop's artwork.
         HomeApp("geph",              R.string.home_geph,          Icons.Default.Public,        Blue,   imageRes = R.drawable.ic_app_geph),
         HomeApp("quick",             R.string.home_quick,         Icons.Default.RocketLaunch,  Blue),
-        HomeApp("mae",               R.string.mae_short,          Icons.Default.AutoAwesome,   Blue, imageRes = R.drawable.ic_app_mae),
-        // «FLUX»: country, IP version, connect -- the rest is the engine's job. Beside MAE, which
-        // can use FLUX's routes as exits of its own.
+        // «FLUX»: country, IP version, connect -- the rest is the engine's job.
         HomeApp("flux",              R.string.flux_title_short,   Icons.Default.Bolt,          Indigo, imageRes = R.drawable.ic_app_flux),
         // «FENIX»: the user's own Firefox account's free VPN (Mozilla's servers in 33 countries).
         HomeApp("fenix",             R.string.fenix_title,        Icons.Default.LocalFireDepartment, Orange, imageRes = R.drawable.ic_app_fenix),
@@ -292,9 +288,9 @@ object HomeDestinations {
      * appends it -- so forgetting to list a new one costs its position, never its icon.
      */
     val BOARD_DEFAULT: List<String> = listOf(
-        "scout", "mlmchat",
-        "masque", "wireguard", "warp_on_warp", "warp",
-        "psiphon", "tor", "geph", "lantern", "urnetwork", "quick", "mae", "flux", "fenix",
+        "scout",
+        "masque", "wireguard", "warp_on_warp",
+        "psiphon", "tor", "geph", "lantern", "urnetwork", "quick", "flux", "fenix",
         "amnezia", "proton", "windscribe", "outline", "npv", "github", "freeconfig", "tgproxy",
         "game", "vpngate", "openvpn", "configstudio", "widgetstudio",
         "store", "antisanction", "iran", "fronting",
@@ -316,10 +312,10 @@ object HomeDestinations {
     }
 
     fun categoryOf(id: String): Category? = when (id) {
-        "masque", "wireguard", "warp_on_warp", "warp", "psiphon", "tor", "geph", "lantern", "urnetwork", "quick", "mae", "flux", "fenix",
+        "masque", "wireguard", "warp_on_warp", "psiphon", "tor", "geph", "lantern", "urnetwork", "quick", "flux", "fenix",
         "amnezia", "proton", "windscribe", "outline", "npv", "github", "vpngate", "openvpn", "nodes" -> Category.CONNECT
         "freeconfig", "iran", "fronting", "sublink", "configstudio", "cloud" -> Category.CONFIGS
-        "fixed_ip", "lan", "usage", "tutorial", "store", "scanner", "settings", "scout", "tgproxy", "widgetstudio", "mlmchat" -> Category.TOOLS
+        "fixed_ip", "lan", "usage", "tutorial", "store", "scanner", "settings", "scout", "tgproxy", "widgetstudio" -> Category.TOOLS
         "game" -> Category.GAMES
         "emergency_2", "emergency_3", "antisanction" -> Category.EMERGENCY
         else -> null
