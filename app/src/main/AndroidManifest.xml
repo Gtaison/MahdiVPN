@@ -165,10 +165,6 @@
             android:exported="false"
             android:process=":xtun" />
         <service
-            android:name="com.mlmvpn.core.warp.XrayMaeHostService"
-            android:exported="false"
-            android:process=":maeprobe" />
-        <service
             android:name="com.mlmvpn.core.warp.XrayTestHostService"
             android:exported="false"
             android:process=":xtest" />
@@ -563,10 +559,6 @@
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_method_warp_on_warp" />
         </receiver>
-        <receiver android:name=".widget.WarpWidget" android:exported="true" android:label="@string/home_warp">
-            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
-            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_method_warp" />
-        </receiver>
         <receiver android:name=".widget.PsiphonWidget" android:exported="true" android:label="@string/home_psiphon">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_method_psiphon" />
@@ -590,10 +582,6 @@
         <receiver android:name=".widget.QuickWidget" android:exported="true" android:label="@string/home_quick">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_method_quick" />
-        </receiver>
-        <receiver android:name=".widget.MaeWidget" android:exported="true" android:label="@string/mae_short">
-            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
-            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_method_mae" />
         </receiver>
         <receiver android:name=".widget.FluxWidget" android:exported="true" android:label="@string/flux_title_short">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
