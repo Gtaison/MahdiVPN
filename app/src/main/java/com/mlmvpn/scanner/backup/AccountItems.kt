@@ -114,8 +114,9 @@ internal object AccountItems {
 
     /**
      * Every shared WARP registration the app holds: MASQUE and WireGuard (`tunnel*.toml`),
-     * the tunnel engine (`aether/data`), the measurements' own identity (`warp/probe`),
-     * Amnezia's carrier, and legacy trial keys. Registering is what Iran's filtering blocks most
+     * the tunnel engine (`aether/data`), Scout's internal WARP helper (`warp/data`),
+     * the measurements' own identity (`warp/probe`), Amnezia's carrier, and legacy trial keys.
+     * Registering is what Iran's filtering blocks most
      * often, which is what makes these worth carrying.
      *
      * The plain `.toml` exists only while an engine runs; between runs only `<name>.sealed` is kept,
@@ -125,14 +126,15 @@ internal object AccountItems {
     private object WarpIdentities : BackupContributor {
         override val id = "acc_warp"
         override val kind = BackupKind.ACCOUNTS
-        override fun title() = tr("هویت‌های وارپ (ماسک، وایرگارد، آمنزیا)", "WARP identities (MASQUE, WireGuard, Amnezia)")
+        override fun title() = tr("هویت‌های وارپ (ماسک، وایرگارد، تست‌ها، آمنزیا)", "WARP identities (MASQUE, WireGuard, tests and Amnezia)")
 
-        private val SEALED_DIRS = listOf("files", "files/aether/data")
+        private val SEALED_DIRS = listOf("files", "files/warp/data", "files/aether/data")
         private const val PROBE = "files/warp/probe/identity.toml"
         private val SECRET = Regex("(?m)^\\s*(?:access_token|wg_private_key|key_pem|private_key)\\s*=")
         private val NAME = Regex("[A-Za-z0-9._-]+\\.toml")
 
         private val slices = listOf(
+            PrefsSlice("cfwarp", keys = setOf("id_via", "id_at", "id_device")),
             PrefsSlice("warp_id_relay", prefixes = listOf("at_", "src_")),
             PrefsSlice("warp_prefs", whole = true),
             PrefsSlice("wg_trial", whole = true),
