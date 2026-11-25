@@ -139,13 +139,6 @@ android.applicationVariants.all { variant ->
     }
 }
 
-// MLM CHAT: the Telegram fork carries its own modified androidx.recyclerview (chat/TMessagesProj,
-// self-contained, no resources). The library would be the same classes twice, and nothing in this
-// app's own code uses RecyclerView, so the library is left out everywhere.
-configurations.configureEach {
-    exclude group: 'androidx.recyclerview', module: 'recyclerview'
-}
-
 dependencies {
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
 
@@ -159,7 +152,7 @@ dependencies {
         }
         implementation("androidx.core:core") {
             version { strictly("1.16.0") }
-            because("the Telegram fork's version; keeps amneziawg's 1.17.0 out")
+            because("keeps amneziawg's 1.17.0 out")
         }
         // The lifecycle group stays pinned. It was pinned because io.github.tim06:openvpn
         // asked for 2.8.2, and that one bump cascades across the whole app: lifecycle
