@@ -620,7 +620,7 @@ private fun Metric(label: String, value: String, modifier: Modifier, color: Colo
 
 /**
  * «URnetwork»'s settings on its screen: the exit location, URnetwork's own ad and tracker blocker
- * (off by default), its use in MAE, and the account with its recovery phrase.
+ * (off by default), and the account with its recovery phrase.
  */
 @Composable
 fun ColumnScope.UrnetworkPanel(onOpenPage: (String) -> Unit) {
