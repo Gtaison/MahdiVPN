@@ -41,7 +41,7 @@ object ScoutVpn {
 
     /**
      * Pauses the app's own connection and waits until the phone is on its bare line again. Engines
-     * that keep their own "connected" intent (FLUX, MAE, Amnezia/Proton, Outline, FENIX, GitHub) are told
+     * that keep their own "connected" intent (FLUX, Amnezia/Proton, Outline, FENIX, GitHub) are told
      * through their own disconnect, so none of them reconnects in the middle of the run.
      */
     suspend fun pause(context: Context): PausedVpn? {
@@ -51,7 +51,6 @@ object ScoutVpn {
         runCatching {
             when {
                 node == com.mlmvpn.scanner.engines.flux.FluxEngine.NODE_ID -> com.mlmvpn.scanner.engines.flux.FluxEngine.disconnectAsync(app)
-                node == com.mlmvpn.scanner.engines.mae.MaeEngine.NODE_ID -> com.mlmvpn.scanner.engines.mae.MaeEngine.stopTunnelAsync(app)
                 node == com.mlmvpn.scanner.engines.fenix.FenixEngine.NODE_ID -> com.mlmvpn.scanner.engines.fenix.FenixEngine.disconnectAsync(app)
                 node == com.mlmvpn.scanner.engines.amnezia.AmzEngine.NODE_ID -> com.mlmvpn.scanner.engines.amnezia.AmzEngine.disconnectAsync(app)
                 node == com.mlmvpn.scanner.engines.outline.OutlineEngine.NODE_ID -> com.mlmvpn.scanner.engines.outline.OutlineEngine.disconnectAsync(app)
