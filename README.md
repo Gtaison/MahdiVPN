@@ -1,7 +1,7 @@
 # MLM VPN — Android
 
 <p align="center">
-  <b>A multi-engine VPN, network scanner and serverless messenger for Android.</b><br/>
+  <b>A multi-engine VPN and network scanner for Android.</b><br/>
   Developed and maintained by <a href="https://github.com/mlmvpn">mlmvpn</a>.
 </p>
 
@@ -368,9 +368,8 @@ cd mlmvpn_android
 
 Проект распространяется под **GNU GPLv3** с дополнительным условием
 (разрешённым §7 GPLv3) об указании авторства — см. [`LICENSE`](LICENSE). В
-проект входит исходный код под GPL (`kittoku/mvc`, `shadowsocks-android` и
-поэтому всё совместное произведение
-распространяется под GPL. Кратко:
+проект входит исходный код под GPL (`kittoku/mvc`, `shadowsocks-android`),
+поэтому всё совместное произведение распространяется под GPL. Кратко:
 
 > Любое использование, форк или производная работа — в исходном или
 > скомпилированном виде — должны явно указывать первоначального разработчика,
@@ -481,7 +480,7 @@ cd mlmvpn_android
 ### 许可与署名
 
 本项目采用 **GNU GPLv3** 许可，并附加一项署名条款（GPLv3 第 7 条允许）——见
-[`LICENSE`](LICENSE)。项目包含 GPL 源代码（`kittoku/mvc`、`shadowsocks-android`，
+[`LICENSE`](LICENSE)。项目包含 GPL 源代码（`kittoku/mvc`、`shadowsocks-android`），
 因此整个组合作品均为 GPL。简而言之：
 
 > 对本项目的任何使用、分叉或衍生作品——无论是源代码还是编译后的形式——都必须
