@@ -17,7 +17,7 @@ import com.mlmvpn.scanner.R
 import com.mlmvpn.scanner.utils.S
 
 /**
- * The five transports of the Cloudflare/censorship tunnel stack, one per home icon.
+ * The Cloudflare/censorship tunnel stack and the independent transport engines, one per home icon.
  *
  * They were a single screen with a tab strip across the top, which made two claims that are
  * both false: that picking one is a mode of one feature, and that they are variants of each
@@ -106,21 +106,6 @@ enum class Transport(
         tint = HomeDestinations.Blue,
     ),
     /**
-     * «وارپ»: plain Cloudflare WARP on an engine of its own -- its own identity (made with WARP
-     * switched on), its own endpoint hunt, its own real-traffic check (see CfWarpEngine). Not the
-     * tunnel core: when that is in trouble, this still tries. The value is deliberately not
-     * "warp" -- WarpIdRelay reads any protocol containing "warp" as WARP-on-WARP.
-     */
-    CFWG(
-        id = "warp",
-        value = "cfwg",
-        label = "WARP",
-        labelFa = S(R.string.cfwarp),
-        icon = Icons.Default.Public,
-        tint = HomeDestinations.Teal,
-        artRes = R.drawable.ic_app_warp,
-    ),
-    /**
      * «لنترن»: Lantern's own network on Lantern 10's own core (radiance, built proxy-only), run as a
      * local proxy behind tun2proxy -- the desktop's lantern-manager.js. Its own servers and its own
      * protocols (Shadowsocks-2022, VLESS-Reality, Lantern's own); the server list is kept, so after
@@ -162,7 +147,6 @@ enum class Transport(
             PSIPHON -> S(R.string.psiphon_s_own_network_with_a_three)
             TOR -> S(R.string.three_layers_of_encryption_over_all_of)
             GEPH -> S(R.string.geph_tagline)
-            CFWG -> S(R.string.cfwarp_tagline)
             LANTERN -> com.mlmvpn.scanner.store.tr(
                 "شبکهٔ لنترن با هستهٔ رسمی نسخهٔ ۱۰ خودش (Shadowsocks-2022، VLESS-Reality و پروتکل‌های خود لنترن). سرورها را خودش انتخاب می‌کند و سریع‌ترین را برمی‌دارد؛ فهرست سرورها ذخیره می‌شود.",
                 "Lantern's network on its own version 10 core (Shadowsocks-2022, VLESS-Reality and Lantern's own protocols). It picks its servers itself and takes the fastest; the server list is kept.",
@@ -192,7 +176,6 @@ enum class Transport(
                 S(R.string.the_slowest_option_and_the_most_anonymous) +
                     S(R.string.turn_on_tor_inside_warp)
             GEPH -> S(R.string.geph_advice)
-            CFWG -> S(R.string.cfwarp_advice)
             LANTERN -> com.mlmvpn.scanner.store.tr(
                 "بار اول، هسته فهرست سرورهایش را از سرویس لنترن می‌گیرد و ذخیره می‌کند؛ از آن به بعد مستقیم و در چند ثانیه وصل می‌شود. اگر اینترنت شما بار اول به سرویس لنترن نرسد، فهرست از راه وارپ گرفته می‌شود — فقط همین یک بار؛ خود ترافیک همیشه مستقیم به سرورهای لنترن می‌رود. کشور خروج را خود لنترن انتخاب می‌کند.",
                 "The first time, the core fetches its server list from Lantern's service and keeps it; from then on it connects straight away, in seconds. If your internet cannot reach Lantern's service that first time, the list is fetched through WARP -- only that once; the traffic itself always goes straight to Lantern's servers. Lantern picks the exit country itself.",
@@ -214,7 +197,7 @@ enum class Transport(
             // Lantern's core is pure Go without cgo, which armv7 does not build: 64-bit ARM only.
             LANTERN -> com.mlmvpn.core.lantern.LanternEngine.supported()
             URNETWORK -> com.mlmvpn.core.urnetwork.UrnetworkEngine.supported()
-            TOR, GEPH, CFWG -> android.os.Build.SUPPORTED_ABIS.any { it.startsWith("arm") }
+            TOR, GEPH -> android.os.Build.SUPPORTED_ABIS.any { it.startsWith("arm") }
             else -> true
         }
 
@@ -233,7 +216,7 @@ enum class Transport(
      * so a core that failed to load on this phone is no reason to refuse it.
      */
     val needsTunnelCore: Boolean
-        get() = this != GEPH && this != CFWG && this != LANTERN && this != URNETWORK
+        get() = this != GEPH && this != LANTERN && this != URNETWORK
 
     companion object {
         fun byId(id: String): Transport? = entries.firstOrNull { it.id == id }
