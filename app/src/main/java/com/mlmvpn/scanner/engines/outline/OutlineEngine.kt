@@ -64,9 +64,6 @@ object OutlineEngine {
     private const val TCP_WORKERS = 64
     private const val REAL_TIMEOUT_MS = 8_000
     /**
-     * The second pass, from inside WARP: every server that gave nothing straight, in bigger batches
-     * (one WireGuard session carries the whole batch). It used to be the first 60 of them -- on a
-     * list of a thousand, nine hundred were written off without ever being tried that way.
      */
     private const val SPEED_URL = "https://speed.cloudflare.com/__down?bytes=3000000"
 
@@ -164,7 +161,6 @@ object OutlineEngine {
                     _connect.value = OutlineConnect.Idle
                     _speed.value = SpeedState.None
                     wantConnected = false
-                    // Its WARP leg has no tunnel to carry any more.
                     launch(Dispatchers.IO) { stopLeg() }
                 }
             }
@@ -536,19 +532,6 @@ object OutlineEngine {
             rtt = canary(attempts = 3)
         } else {
             reason = if (MyVpnService.connectionPhaseFlow.value == MyVpnService.Phase.FAILED) OutlineConnect.Reason.VPN_REFUSED else OutlineConnect.Reason.BAD_CONFIG
-        }
-        if (!wantConnected) return null
-        if (rtt == null) return reason
-            if (!wantConnected) return null
-            if (!up) {
-                if (MyVpnService.connectionPhaseFlow.value == MyVpnService.Phase.FAILED) reason = OutlineConnect.Reason.VPN_REFUSED
-                else reason = OutlineConnect.Reason.BAD_CONFIG
-                continue
-            }
-            _connect.value = OutlineConnect.Connecting(server.id, OutlineConnect.Step.VERIFYING, attempt)
-            rtt = canary(attempts = 3)
-            if (rtt != null) { viaCf = cf; break }
-            reason = OutlineConnect.Reason.NO_DATA
         }
         if (!wantConnected) return null
         if (rtt == null) return reason
