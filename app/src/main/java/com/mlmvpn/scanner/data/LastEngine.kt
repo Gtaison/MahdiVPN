@@ -55,14 +55,6 @@ object LastEngine {
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     /**
-     * MAE is recorded by name only. Its config is compiled per network and carries MAE's sealed
-     * secrets unsealed (the WARP key, the Worker's id, the user's configs): stored here it went
-     * into Android backups and, replayed, brought one network's routes to another. The tile builds
-     * a fresh one instead.
-     */
-    const val MAE_MARKER = "mae"
-
-    /**
      * FLUX likewise, by name: its config is chosen per network from public nodes, and the tile
      * asks FLUX for this network's route instead of replaying another network's.
      */
@@ -81,7 +73,7 @@ object LastEngine {
     const val AMNEZIA_MARKER = "amnezia"
     const val OUTLINE_MARKER = "outline"
 
-    private fun isMae(nodeId: String?) = nodeId == MAE_MARKER || nodeId == FLUX_MARKER || nodeId == FENIX_MARKER ||
+    private fun isManagedEngine(nodeId: String?) = nodeId == FLUX_MARKER || nodeId == FENIX_MARKER ||
         nodeId == WINDSCRIBE_MARKER || nodeId == AMNEZIA_MARKER || nodeId == OUTLINE_MARKER
 
     /**
@@ -98,7 +90,7 @@ object LastEngine {
         if (uri.isNullOrBlank()) return
         prefs(context).edit()
             .putString(KEY_KIND, KIND_XRAY)
-            .putString(KEY_URI, when { isMae(nodeId) -> nodeId; isAmneziaCf(uri) -> AMNEZIA_CF_MARKER; else -> uri })
+            .putString(KEY_URI, when { isManagedEngine(nodeId) -> nodeId; isAmneziaCf(uri) -> AMNEZIA_CF_MARKER; else -> uri })
             .putString(KEY_NODE_ID, nodeId)
             .apply()
     }
@@ -129,9 +121,14 @@ object LastEngine {
                 ?.takeIf { it.isNotBlank() }
                 ?.let { uri ->
                     val nodeId = p.getString(KEY_NODE_ID, null)
-                    // A record from before the marker still holds a whole MAE config: dropped here.
-                    if (isMae(nodeId) && uri != nodeId) p.edit().putString(KEY_URI, nodeId).apply()
-                    Record.Xray(if (isMae(nodeId)) nodeId!! else uri, nodeId)
+                    // Retired MAE records stored a network-specific config and cannot be replayed.
+                    if (nodeId == "mae") {
+                        clear(context)
+                        null
+                    } else {
+                        if (isManagedEngine(nodeId) && uri != nodeId) p.edit().putString(KEY_URI, nodeId).apply()
+                        Record.Xray(if (isManagedEngine(nodeId)) nodeId!! else uri, nodeId)
+                    }
                 }
 
             KIND_TUNNEL -> p.getString(KEY_TRANSPORT, null)
