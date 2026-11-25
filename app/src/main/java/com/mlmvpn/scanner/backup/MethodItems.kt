@@ -36,11 +36,6 @@ internal object MethodItems {
         ),
         ExitCountry,
         SimpleItem(
-            "m_warp", BackupKind.METHOD, "وارپ", "WARP",
-            listOf(PrefsSlice("cfwarp", keys = setOf("ip", "keepalive", "noize", "scan"))),
-            tileId = "warp",
-        ),
-        SimpleItem(
             "m_psiphon", BackupKind.METHOD, "سایفون", "Psiphon",
             listOf(
                 PrefsSlice(
@@ -57,7 +52,7 @@ internal object MethodItems {
             listOf(
                 PrefsSlice(
                     "settings",
-                    keys = setOf("tor_mode", "tor_exit_region", "tor_chain_armed", "tor_bridge_choice", "tor_bridge_pinned", "chain_outer_mode_tor"),
+                    keys = setOf("tor_mode", "tor_exit_region", "tor_bridge_choice", "tor_bridge_pinned"),
                     prefixes = listOf("tor_region_"),
                 ),
             ),
