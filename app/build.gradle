@@ -2,10 +2,6 @@ plugins {
     id 'com.android.application'
     id 'kotlin-android'
     id 'org.jetbrains.kotlin.plugin.compose'
-    // MLM CHAT: the Telegram fork's application-side build step (chat/build-logic): its strings as a
-    // hash-keyed asset table with stable ids, the string-id asset and lottie_meta.bin, which the
-    // fork's screens read at run time. It also takes this app's own strings into that table.
-    id 'org.telegram.build-app-plugin'
 }
 
 android {
@@ -273,15 +269,10 @@ dependencies {
     // native library renamed; see third_party/README.md and scripts/repackage-psiphon-aar.py.
     // The pristine upstream AAR is kept in third_party/ and deliberately NOT in this folder.
     //
-    // webkit-1.8.0.aar is left out while MLM CHAT is in the build: the Telegram fork brings
-    // androidx.webkit 1.14.0 (a superset, ProxyController included), and two copies would be
-    // duplicate classes.
+    // Keep the older bundled WebKit AAR excluded; androidx.webkit 1.14.0 is used directly.
     implementation fileTree(dir: 'libs', include: ['*.aar'], exclude: ['webkit-1.8.0.aar'])
     implementation 'androidx.webkit:webkit:1.14.0' // Proton's sign-in (ProxyController), same as the fork's
 
-    // MLM CHAT (PLAN 13, T4/T23): the Telegram Android fork, run in the :chat process.
-    implementation project(':TMessagesProj')
-    
     // Unit tests. There were none before Config Studio; these two exist so that
     // ConfigBuilder's golden fixtures can run as a plain JVM test rather than needing an
     // instrumented device or Robolectric.
