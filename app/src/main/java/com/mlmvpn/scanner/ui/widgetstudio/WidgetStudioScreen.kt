@@ -879,28 +879,7 @@ private fun AddMethodWidget(onBack: () -> Unit, onAdd: (String) -> Unit) {
             color = Ios.SecondaryLabel, fontSize = 13.sp, lineHeight = 21.sp, modifier = Modifier.padding(horizontal = 24.dp),
         )
         Spacer(Modifier.height(10.dp))
-        SettingsGroup {
-                val count = remember { GerehWidgets.placedCount(context) }
-                Row(
-                    modifier = Modifier.fillMaxWidth().clickable { onAdd(gereh.id) }.padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    AppIconTile(app = gereh, size = 34.dp)
-                    Spacer(Modifier.width(12.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(WidgetPainter.labelOf(gereh), color = Ios.Label, fontSize = 16.sp)
-                        Text(
-                            if (count > 0) WidgetFormat.digits(tr("$count ویجت روی صفحه", "$count on the home screen"))
-                            else tr("پیام‌های نخوانده؛ با لمس، گره باز می‌شود", "Unread messages; a tap opens Gereh"),
-                            color = Ios.SecondaryLabel, fontSize = 12.sp,
-                        )
-                    }
-                    Icon(Icons.Default.AddToHomeScreen, contentDescription = null, tint = Ios.Blue, modifier = Modifier.size(22.dp))
-                }
-            }
-            Spacer(Modifier.height(10.dp))
-            SettingsSectionHeader(tr("روش‌های اتصال", "Connection methods"))
-        }
+        SettingsSectionHeader(tr("روش‌های اتصال", "Connection methods"))
         SettingsGroup {
             WidgetMethods.all().forEachIndexed { i, app ->
                 if (i > 0) Separator()
