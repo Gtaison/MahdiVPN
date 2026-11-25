@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace 'com.mlmvpn.scanner'
-    // 36 for the Telegram fork's libraries (androidx.core 1.16+). targetSdk stays 34: it, not
+    // 36 for current AndroidX libraries. targetSdk stays 34: it, not
     // compileSdk, decides how Android treats the VPN services at run time.
     compileSdk 36
     buildToolsVersion "35.0.0"
@@ -42,13 +42,6 @@ android {
         }
     }
 
-    // MLM CHAT: the Telegram fork opens assets/emoji.pack with openFd(), which works only on an
-    // uncompressed asset; Telegram's own app module says the same. Without it the chat's process
-    // dies on the first screen that draws an emoji (New Contact, the QR code).
-    androidResources {
-        noCompress += "pack"
-    }
-
     // No externalNativeBuild block, deliberately.
     //
     // src/main/cpp/ carries the sources for two of the libraries in jniLibs -- the JNI shim
@@ -80,8 +73,7 @@ android {
     // Android 7 through the current release from a single file.
     splits {
         abi {
-            // MLM CHAT test builds: -PmlmQuick turns the splits off and keeps arm64 only (ndk block
-            // above): one APK instead of three, two thirds less packaging. Releases build all three.
+            // Optional quick test build: -PmlmQuick keeps only arm64; normal builds include both splits and universal.
             enable !project.hasProperty('mlmQuick')
             reset()
             include 'arm64-v8a', 'armeabi-v7a'
@@ -95,8 +87,7 @@ android {
             // shrinkResources left off — res is tiny and dynamic lookups exist.
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            // MLM CHAT tests: -PmlmTestSign signs a release (R8 and all) with the debug key, so it
-            // installs over the test phones' debug builds and keeps their Gereh identities.
+            // Optional test signing; production releases are signed in Android Studio as before.
             // Real releases are signed in Android Studio as before.
             if (project.hasProperty('mlmTestSign')) {
                 signingConfig signingConfigs.debug
@@ -139,9 +130,8 @@ android.applicationVariants.all { variant ->
     def base = variant.versionCode
     variant.outputs.each { output ->
         def abi = output.getFilter(com.android.build.OutputFile.ABI)
-        // MLM CHAT quick builds have no split but are arm64 only: they take arm64's code, so they
-        // install over a full build's arm64 APK (and it over them) without a downgrade refusal.
-        def offset = ['armeabi-v7a': 1000000, 'arm64-v8a': 2000000][abi ?: (project.hasProperty('mlmQuick') ? 'arm64-v8a' : null)]
+        // Quick arm64-only test builds take arm64's code, so they install over the normal arm64 APK.
+                def offset = ['armeabi-v7a': 1000000, 'arm64-v8a': 2000000][abi ?: (project.hasProperty('mlmQuick') ? 'arm64-v8a' : null)]
         if (offset != null) {
             output.versionCodeOverride = base + offset
         }
@@ -162,11 +152,10 @@ dependencies {
     implementation 'com.google.code.gson:gson:2.10.1'
     
     constraints {
-        // androidx.core moves from 1.13.1 to 1.16.0: the version the Telegram fork is built with
-        // (it needs compileSdk 35+). Still pinned, so amneziawg cannot pull 1.17.0 in.
+        // Keep androidx.core on 1.16.0 (compileSdk 35+) and prevent amneziawg from pulling 1.17.0.
         implementation("androidx.core:core-ktx") {
             version { strictly("1.16.0") }
-            because("the Telegram fork's version; keeps amneziawg's 1.17.0 out")
+            because("keeps amneziawg's 1.17.0 out")
         }
         implementation("androidx.core:core") {
             version { strictly("1.16.0") }
