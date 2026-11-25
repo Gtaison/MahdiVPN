@@ -43,7 +43,7 @@ private val FEATURE_BAR_HEIGHT = 56.dp
 
 private val SELF_HEADED = setOf(
     "settings", "vpn_settings", "usage", "tutorial", "nodes", "cloud", "scanner", "quick", "game", "sublink", "fixed_ip", "vpngate", "freeconfig", "lan",
-    "configstudio", "github", "store", "openvpn", "mae", "flux", "fenix", "cfdoctor", "amnezia", "proton", "windscribe", "outline", "scout", "tgproxy",
+    "configstudio", "github", "store", "openvpn", "flux", "fenix", "cfdoctor", "amnezia", "proton", "windscribe", "outline", "scout", "tgproxy",
     "npv", "widgetstudio",
     // The five transports. Each draws an iOS navigation bar of its own, and pushes pages under
     // it that carry their own back chevron -- the app chrome on top would be a second one.
@@ -128,19 +128,6 @@ fun AppScreen() {
                 activeTab = tile
             }
         }
-    }
-
-    // A chat's card named a row of Settings (WidgetOpen.openSetting, q12): Settings on its page,
-    // the row lit, as when the home search finds it.
-    val externalSetting by com.mlmvpn.scanner.widget.WidgetOpen.pendingSetting.collectAsState()
-    val linkContext = androidx.compose.ui.platform.LocalContext.current
-    LaunchedEffect(externalSetting) {
-        val key = externalSetting ?: return@LaunchedEffect
-        com.mlmvpn.scanner.widget.WidgetOpen.pendingSetting.value = null
-        val entry = com.mlmvpn.scanner.data.GerehAppLinks.entryOf(linkContext, key) ?: return@LaunchedEffect
-        activeModal = null
-        settingsRoute = com.mlmvpn.scanner.ui.settings.SettingsIndex.prepare(linkContext, entry)
-        openTab("settings")
     }
 
     // The update check still runs, and it no longer says anything.
@@ -530,13 +517,6 @@ fun AppScreen() {
                             }
                         }
                     }
-                    if (visitedTabs.contains("mae")) {
-                        Box(modifier = Modifier.fillMaxSize().offset(x = if (activeTab == "mae") 0.dp else 10000.dp)) {
-                            CompositionLocalProvider(LocalTabVisible provides (activeTab == "mae")) {
-                                com.mlmvpn.scanner.ui.mae.MaeScreen(onBack = { goBack() }, onOpenTile = { openTab(it) })
-                            }
-                        }
-                    }
                     if (visitedTabs.contains("flux")) {
                         Box(modifier = Modifier.fillMaxSize().offset(x = if (activeTab == "flux") 0.dp else 10000.dp)) {
                             CompositionLocalProvider(LocalTabVisible provides (activeTab == "flux")) {
@@ -671,8 +651,6 @@ fun AppScreen() {
                 trafficUp = trafficUp,
                 onOpen = { app ->
                     when {
-                        // «MLM CHAT» is the Telegram fork's own screen in the :chat process, not a tab.
-                        app.id == com.mlmvpn.scanner.chat.MlmChat.TILE_ID -> com.mlmvpn.scanner.chat.MlmChat.open(context)
                         app.opensAsModal -> activeModal = app.id
                         else -> openTab(app.id)
                     }
