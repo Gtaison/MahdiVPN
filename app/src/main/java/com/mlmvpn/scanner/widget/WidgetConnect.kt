@@ -526,7 +526,7 @@ object WidgetConnect {
      * [VpnSwitch.stopAll] stops every engine and service, but it reaches the transport stack only
      * when its native core reports itself running, and «گف», «وارپ», «لنترن» and «URnetwork» run on
      * engines of their own that never set that flag: for them the transport stack is told directly.
-     * The engines with a watchdog of their own (MAE, GitHub Tunnel, SNI's local front) are told too,
+     * The engines with a watchdog of their own (GitHub Tunnel, SNI's local front) are told too,
      * so nothing brings the tunnel straight back.
      */
     fun disconnect(context: Context) {
