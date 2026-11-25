@@ -166,7 +166,7 @@ class MyVpnService : VpnService() {
         // tunnel, so its default is the underlying Wi-Fi or mobile network). This used to watch every
         // network with internet: with Wi-Fi and mobile data both on, mobile data going idle and
         // coming back -- which phones do all the time behind a working Wi-Fi -- tore the whole
-        // tunnel down and built it again each time. Users of MAE saw it as constant drops.
+        // tunnel down and built it again each time.
         val cb = object : android.net.ConnectivityManager.NetworkCallback() {
             private var current: android.net.Network? = null
             override fun onLost(network: android.net.Network) {
@@ -255,18 +255,8 @@ class MyVpnService : VpnService() {
             // so use a flat delay generous enough for the slowest engine (Aether killing a native
             // process) rather than racing a fresh connect against teardown still in flight.
             kotlinx.coroutines.delay(3000)
-            // MAE compiles its config per network. The network that came back may be another one
-            // (Wi-Fi -> mobile data): replaying the old config ran the previous network's routes
-            // and DNS path, and MAE's own re-apply found the tunnel down and skipped. It builds a
-            // fresh one instead; if that fails, the old config is still better than nothing.
-            val restore = if (intentToRestore.getStringExtra("NODE_ID") == com.mlmvpn.scanner.engines.mae.MaeEngine.NODE_ID) {
-                val fresh = runCatching {
-                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                        com.mlmvpn.scanner.engines.mae.MaeEngine.freshConfig(applicationContext)
-                    }
-                }.getOrNull()
-                if (fresh != null) Intent(intentToRestore).putExtra("NODE_URI", fresh) else intentToRestore
-            } else if (intentToRestore.getStringExtra("NODE_ID") == com.mlmvpn.scanner.engines.flux.FluxEngine.NODE_ID) {
+            // FLUX and FENIX rebuild their configs when the underlying network changes.
+            val restore = if (intentToRestore.getStringExtra("NODE_ID") == com.mlmvpn.scanner.engines.flux.FluxEngine.NODE_ID) {
                 // FLUX too: the network that came back gets the route FLUX knows for it, when it
                 // knows one; otherwise the old routes, which FLUX then checks and replaces if dead.
                 val fresh = runCatching {
@@ -854,8 +844,8 @@ class MyVpnService : VpnService() {
                                 }
 
                                 // Local Network sharing hands other devices the tunnel through the
-                                // listener on the Local Port. An engine's whole config (MAE, FLUX,
-                                // FENIX, …) may ship none there, and then the share showed «ready»
+                                // listener on the Local Port. An engine's whole config (FLUX, FENIX,
+                                // Amnezia, …) may ship none there, and then the share showed «ready»
                                 // and dialled nothing: one is added, sniffing like the tun's.
                                 if (allowLan) run {
                                     val cur = jsonObj.getJSONArray("inbounds")
@@ -884,14 +874,12 @@ class MyVpnService : VpnService() {
                         // that generateConfig builds in has to be fitted in here -- only where the
                         // tunnel is a worker, and not at all with the switch off. See
                         // XrayJsonGenerator.applyGoogleFix.
-                        // MAE decides Google/Gemini routing itself, per service and per network.
-                        val isMae = jsonRemarks == com.mlmvpn.scanner.engines.mae.compile.MaeConfigCompiler.REMARKS
                         // FLUX likewise: its routes, DNS and QUIC handling are its own.
                         val isFlux = com.mlmvpn.scanner.engines.flux.core.compile.FluxConfigCompiler.isFlux(jsonRemarks) ||
                             com.mlmvpn.scanner.engines.fenix.FenixEngine.isFenixConfig(jsonRemarks) ||
                             // Amnezia through Cloudflare: its routes and DNS are its own too.
                             com.mlmvpn.scanner.engines.amnezia.AmzCarrier.isCarrierConfig(jsonRemarks)
-                        val startConfig = (if (isMae || isFlux) null else com.mlmvpn.scanner.utils.XrayJsonGenerator.applyGoogleFix(finalConfig))
+                        val startConfig = (if (isFlux) null else com.mlmvpn.scanner.utils.XrayJsonGenerator.applyGoogleFix(finalConfig))
                             ?.also {
                                 com.mlmvpn.scanner.engines.gst.GstLog.i(
                                     "MyVpnService", "Gemini / Google apps fix applied to this config"
@@ -899,12 +887,12 @@ class MyVpnService : VpnService() {
                             }
                             ?: finalConfig
 
-                        // A whole config from an engine of its own (MAE, FLUX, FENIX) chose its handshake
+                        // A whole config from an engine of its own (FLUX, FENIX, Amnezia) chose its handshake
                         // and checks its own data path; the Cloudflare engine neither reshapes it nor
                         // second-guesses it. Any other whole config with a Cloudflare outbound gets the
                         // proven CONNECT shape and must carry real data before it counts as connected.
                         val cfnet = com.mlmvpn.scanner.engines.cfnet.CfNetManager.get(this@MyVpnService)
-                        val ownEngine = isMae || isFlux
+                        val ownEngine = isFlux
                         runtimeControlSocksPort = 0
                         var working = false
                         var lastShape: com.mlmvpn.scanner.engines.cfnet.Strategy? = null
@@ -1461,7 +1449,7 @@ class MyVpnService : VpnService() {
     //
     // The tunnel first held an unbounded PARTIAL_WAKE_LOCK for the entire session. Then it held
     // one "while traffic flows", dropped after five minutes without a single byte -- which a
-    // connected phone never has: every app's push connection, MAE's WARP keepalive and the
+    // connected phone never has: every app's push connection, the VPN keepalives and the
     // system's own checks move a few hundred bytes every few seconds, so the lock was renewed
     // forever and the CPU still never slept. With the CPU awake, every timer in the process --
     // the cores' keepalives, every polling loop -- ran on schedule all night, and so did the radio
@@ -1679,12 +1667,8 @@ class MyVpnService : VpnService() {
             fun isGameSession() = getSharedPreferences("game_booster_prefs", android.content.Context.MODE_PRIVATE)
                 .getBoolean("game_mode_active", false)
 
-            // Never while MAE is the tunnel either: it routes each app by itself, and swapping it
-            // for one node (after 15 minutes, by default) quietly took every app's route away.
-            fun isMaeSession() = connectedNodeId == com.mlmvpn.scanner.engines.mae.MaeEngine.NODE_ID
-
             while (true) {
-                val isAutoSwitchEnabled = prefs.getBoolean("auto_switch_enabled", false) && !isGameSession() && !isMaeSession()
+                val isAutoSwitchEnabled = prefs.getBoolean("auto_switch_enabled", false) && !isGameSession() 
                 if (!isAutoSwitchEnabled) {
                     // Auto-switch is off by default, so for most users this branch is the only
                     // one that ever runs. Re-checking a single boolean every 10s meant ~8.6k
@@ -1698,7 +1682,7 @@ class MyVpnService : VpnService() {
                 kotlinx.coroutines.delay(intervalMinutes * 60 * 1000L)
                 
                 // Double check if still enabled after delay
-                if (!prefs.getBoolean("auto_switch_enabled", false) || !isRunning || isGameSession() || isMaeSession()) continue
+                if (!prefs.getBoolean("auto_switch_enabled", false) || !isRunning || isGameSession() ) continue
                 
                 val platformStr = prefs.getString("auto_switch_platform", "None") ?: "None"
                 
@@ -1756,7 +1740,7 @@ class MyVpnService : VpnService() {
                     }
                 }
                 
-                if (bestNode != null && connectedNodeId != bestNode.id && isRunning && !isGameSession() && !isMaeSession()) {
+                if (bestNode != null && connectedNodeId != bestNode.id && isRunning && !isGameSession() ) {
                     Log.d("AutoSwitch", "Found better node: ${bestNode.name} with score $bestScore. Switching...")
                     
                     val isProxyMode = com.mlmvpn.scanner.utils.NetworkSettings.proxyMode(this@MyVpnService)
