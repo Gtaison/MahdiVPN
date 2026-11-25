@@ -36,7 +36,7 @@ jobs:
       - name: Install Android SDK packages
         run: |
           yes | sdkmanager --licenses >/dev/null
-          sdkmanager "platforms;android-36" "build-tools;35.0.0" "platform-tools"
+          sdkmanager "platforms;android-36" "build-tools;35.0.0" "platform-tools" "ndk;27.2.12479018" "cmake;3.22.1"
 
       - name: Remove Windows-only local JDK settings from CI checkout
         run: |
