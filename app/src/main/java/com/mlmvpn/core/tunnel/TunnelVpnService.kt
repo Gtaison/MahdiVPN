@@ -3397,8 +3397,8 @@ class TunnelVpnService : VpnService(), TunnelEngine.CoreCallback, PsiphonTunnel.
     }
 
     private fun startTorTunnel() {
-        val chained = TorManager.chainArmed(this)
-        chainMode = chained
+        // Tor now connects directly; the WARP outer-leg chain is intentionally disabled.
+        chainMode = false
         chainOuterCommitted = false
 
         runOnWorker {
@@ -3434,32 +3434,11 @@ class TunnelVpnService : VpnService(), TunnelEngine.CoreCallback, PsiphonTunnel.
                     .establish() ?: error("Android could not establish the VPN interface")
                 vpnModeActive.set(true)
 
-                // --- Outer leg, when armed: WARP first, then Tor inside it ---
-                var outer: String? = null
-                if (chained) {
-                    TunnelEngine.attach(this)
-                    outer = raiseOuterLeg(inner = "Tor") ?: error(
-                        if (CoreConfig.chainOuterIsAuto(this, forTor = true)) {
-                            getString(R.string.chain_no_outer_tor)
-                        } else {
-                            val pinned = CoreConfig.chainOuterLabel(
-                                CoreConfig.chainOuterCandidates(this, forTor = true).first()
-                            )
-                            getString(R.string.chain_pinned_failed_tor, pinned)
-                        }
-                    )
-                    // Only now, once a rung is committed and its listener accepts:
-                    // arming the proxy earlier would have Tor write Socks5Proxy
-                    // pointing at a port with nothing behind it.
-                    TorManager.useUpstreamProxy("127.0.0.1:${CoreConfig.chainSocksPort(this)}")
-                    ConnectionLog.record("Chain: outer leg ready — bootstrapping Tor through $outer")
-                } else {
-                    TorManager.useUpstreamProxy(null)
-                }
+                // Tor owns its transports directly; no outer WARP proxy is attached.
 
                 sendStatus(
                     STATUS_CONNECTING,
-                    if (outer != null) "Starting Tor through $outer…" else "Starting Tor…",
+                    "Starting Tor…",
                     5,
                 )
                 ConnectionLog.record("Tor: TUN ready — bootstrapping")
@@ -3470,13 +3449,6 @@ class TunnelVpnService : VpnService(), TunnelEngine.CoreCallback, PsiphonTunnel.
                 if (!TorManager.start(this)) {
                     error(
                         when {
-                            // Inside the chain only Direct and Meek are tried, so
-                            // "any method" would overstate what was attempted and
-                            // send the user looking for a network fault. Disarming
-                            // the chain is the actionable next step, since obfs4
-                            // and Snowflake are available unchained.
-                            outer != null -> "Tor could not connect through $outer; " +
-                                "turn Tor over WARP off to try obfs4 and Snowflake"
                             TorManager.selectedMode(this) == TorManager.TorMode.AUTO ->
                                 "Tor could not connect with any method on this network"
                             // Name the pinned mode: the fix is to change it or
@@ -3503,9 +3475,8 @@ class TunnelVpnService : VpnService(), TunnelEngine.CoreCallback, PsiphonTunnel.
                 }
 
                 currentVpnIp = ""
-                val via = if (outer != null) "$mode over $outer" else mode
-                sendStatus(STATUS_CONNECTED, "Tor connected via $via")
-                ConnectionLog.record("Tor: connected via $via")
+                sendStatus(STATUS_CONNECTED, "Tor connected via $mode")
+                ConnectionLog.record("Tor: connected via $mode")
                 // The mode is only known now, and it is part of the notification's
                 // subtitle ("Tor (Meek)").
                 repostNotification()
@@ -3515,10 +3486,6 @@ class TunnelVpnService : VpnService(), TunnelEngine.CoreCallback, PsiphonTunnel.
                 stopTorProgressPolling()
                 ConnectionLog.record("Tor start failed: ${e.message}")
                 TorManager.stop()
-                // The outer leg is the service's to stop; TorManager only owns tor
-                // and its PT. Left running it would hold the core and make the next
-                // connect fail with "already running".
-                if (chained) stopOuterLeg()
                 chainMode = false
                 failAndStop(e.message ?: "Tor start failed")
             }
