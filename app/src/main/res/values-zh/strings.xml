@@ -4985,9 +4985,6 @@
     <string name="fenix_step_tunnel">正在建立隧道…</string>
     <string name="fenix_step_check">正在测试连接…</string>
     <string name="fenix_ms">%1$s 毫秒</string>
-    <string name="fenix_mae_section">MAE</string>
-    <string name="fenix_mae_toggle">在 MAE 中使用</string>
-    <string name="fenix_mae_footer">MAE 也可以把 FENIX 用作境外出口，并为每个应用单独测试。</string>
     <string name="fenix_fastest">最快的国家</string>
     <string name="fenix_fastest_detail">自动，按你自己连接的 ping 选择</string>
     <string name="fenix_recommended">Mozilla 推荐</string>
@@ -5404,7 +5401,6 @@
     <string name="tgproxy_title">Telegram 代理</string>
     <string name="home_widgetstudio">Widget Studio</string>
     <string name="widget_method_desc">一键连接或断开</string>
-    <string name="widget_gereh_desc">Gereh 新消息，一键直达</string>
     <string name="widget_studio_desc">你在 Widget Studio 中制作的专属设计</string>
     <string name="widget_studio_small">Widget Studio · 小</string>
     <string name="widget_studio_medium">Widget Studio · 中</string>
