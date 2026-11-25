@@ -680,26 +680,6 @@ fun ColumnScope.UrnetworkPanel(onOpenPage: (String) -> Unit) {
         "URnetwork's own blocker (the one in its official app): a list of about 160,000 ad and tracker domains stopped inside the tunnel. Off by default; turning it on or off applies without reconnecting. If a site or app misbehaves, turn it off. The number by the switch counts blocked packets, as the official app does; names stopped right away in DNS are not in it.",
     ))
 
-    // ── MAE ──
-    var forMae by remember { mutableStateOf(UrnetworkSettings.forMae(ctx)) }
-    SettingsSectionHeader("MAE")
-    SettingsGroup {
-        SettingsToggle(
-            title = tr("استفاده در MAE", "Use in MAE"),
-            checked = forMae,
-            onCheckedChange = {
-                forMae = it
-                UrnetworkSettings.setForMae(ctx, it)
-                com.mlmvpn.scanner.engines.mae.MaeEngine.urnetworkForMaeChanged()
-            },
-            icon = Icons.Default.AutoAwesome, tint = Ios.Blue,
-        )
-    }
-    SettingsFooter(tr(
-        "وقتی MAE وصل است، URnetwork یکی از خروجی‌های خارجی آن می‌شود: یک هستهٔ جدا (یک دستگاه جدا در همین حساب) کنار MAE بالا می‌آید و MAE برای هر برنامه خودش می‌سنجد که از URnetwork باز می‌شود یا نه. مصرف آن هم از همین حجم حساب کم می‌شود. به URnetwork این کاشی دست نمی‌زند.",
-        "While MAE is connected, URnetwork becomes one of its exits abroad: a separate core (a device of its own in this account) runs beside MAE, and MAE checks for each app by itself whether it opens through URnetwork. Its traffic counts against the same account data. The URnetwork of this tile is not touched.",
-    ))
-
     // ── the account ──
     var showSeed by remember { mutableStateOf(false) }
     var seed by remember { mutableStateOf<String?>(null) }
