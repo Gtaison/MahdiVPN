@@ -235,8 +235,8 @@ open class XrayCoreHostService : Service() {
             }
             MSG_STATS -> {
                 val tags = data.getStringArray(KEY_TAGS) ?: emptyArray()
-                val core = cores[id]?.core
-                reply(replyTo, Bundle().apply { putLongArray(KEY_BYTES, LongArray(tags.size) { core?.traffic(tags[it]) ?: 0L }) })
+                val bytes = cores[id]?.core?.traffic(tags.toList()) ?: LongArray(tags.size)
+                reply(replyTo, Bundle().apply { putLongArray(KEY_BYTES, bytes) })
             }
             else -> reply(replyTo, Bundle())
         }
