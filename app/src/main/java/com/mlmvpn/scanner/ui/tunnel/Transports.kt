@@ -173,8 +173,7 @@ enum class Transport(
                 S(R.string.it_has_its_own_core_and_has) +
                     S(R.string.the_carrier_has_targeted_cloudflare_s_addresses)
             TOR ->
-                S(R.string.the_slowest_option_and_the_most_anonymous) +
-                    S(R.string.turn_on_tor_inside_warp)
+                S(R.string.the_slowest_option_and_the_most_anonymous)
             GEPH -> S(R.string.geph_advice)
             LANTERN -> com.mlmvpn.scanner.store.tr(
                 "بار اول، هسته فهرست سرورهایش را از سرویس لنترن می‌گیرد و ذخیره می‌کند؛ از آن به بعد مستقیم و در چند ثانیه وصل می‌شود. اگر اینترنت شما بار اول به سرویس لنترن نرسد، فهرست از راه وارپ گرفته می‌شود — فقط همین یک بار؛ خود ترافیک همیشه مستقیم به سرورهای لنترن می‌رود. کشور خروج را خود لنترن انتخاب می‌کند.",
