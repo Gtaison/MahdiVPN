@@ -66,7 +66,7 @@ internal class FenixStore(context: Context) {
 
     // ── accounts ────────────────────────────────────────────────────────────────────────────────
 
-    /** In memory: MAE asks for a pass on every config it compiles, and a Keystore open is not free. */
+    /** In memory: the Fenix tunnel reuses the active account's pass without reopening the Keystore. */
     @Volatile private var cache: List<Acct>? = null
 
     @Synchronized
@@ -111,7 +111,7 @@ internal class FenixStore(context: Context) {
         putSecret("accounts", encode(list))
     }
 
-    /** The account the running tunnel (and MAE) uses. */
+    /** The account the running Fenix tunnel uses. */
     var activeId: String?
         get() = p.getString("active", null)
         set(v) = p.edit().putString("active", v).apply()
@@ -171,10 +171,6 @@ internal class FenixStore(context: Context) {
         get() = p.getString("country", FenixServers.FASTEST).orEmpty()
         set(v) = p.edit().putString("country", v).apply()
 
-    /** Whether MAE may use FENIX as one of its foreign exits. On by default once signed in. */
-    var forMae: Boolean
-        get() = p.getBoolean("for_mae", true)
-        set(v) = p.edit().putBoolean("for_mae", v).apply()
 
     fun serversJson(): String? = p.getString("servers", null)
     val serversAt: Long get() = p.getLong("servers_at", 0L)
