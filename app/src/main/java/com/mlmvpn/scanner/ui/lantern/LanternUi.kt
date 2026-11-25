@@ -57,16 +57,12 @@ import kotlinx.coroutines.withContext
 /** «لنترن»'s own choice, kept where the tile's other settings are. */
 object LanternSettings {
     private const val PREF_SMART = "lantern_smart"
-    private const val PREF_FOR_MAE = "lantern_for_mae"
     private fun prefs(ctx: Context) = ctx.applicationContext.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
     /** Lantern's smart routing: also the services it lists as safe to reach directly go direct. Off by default. */
     fun smart(ctx: Context): Boolean = prefs(ctx).getBoolean(PREF_SMART, false)
     fun setSmart(ctx: Context, on: Boolean) = prefs(ctx).edit().putBoolean(PREF_SMART, on).apply()
 
-    /** Whether MAE may use Lantern as one of its exits abroad (see LanternMae). On by default, as FENIX's is. */
-    fun forMae(ctx: Context): Boolean = prefs(ctx).getBoolean(PREF_FOR_MAE, true)
-    fun setForMae(ctx: Context, on: Boolean) = prefs(ctx).edit().putBoolean(PREF_FOR_MAE, on).apply()
 }
 
 /**
