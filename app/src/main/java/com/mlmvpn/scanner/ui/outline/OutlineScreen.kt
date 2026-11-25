@@ -387,13 +387,9 @@ private fun OutlineHome(
     }
 }
 
-/**
- * The running test: which pass, how far, how many work so far, and for how long. The second pass
- * (from inside WARP) has its own count and bar, and says why it exists.
- */
+/** The running direct-only Outline server test. */
 @Composable
 internal fun TestProgress(p: OutlineTestProgress) {
-    val warp = p.phase == OutlineTestProgress.Phase.WARP
     var now by remember { mutableStateOf(System.currentTimeMillis()) }
     LaunchedEffect(p.phaseStartedAt) { while (true) { now = System.currentTimeMillis(); delay(1_000) } }
     val secs = ((now - p.phaseStartedAt).coerceAtLeast(0) / 1_000).toInt()
@@ -401,8 +397,7 @@ internal fun TestProgress(p: OutlineTestProgress) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                if (warp) tr("از داخل وارپ: ${fa(p.done)} از ${fa(p.total)} · ${fa(p.alive)} سالم", "Through WARP: ${p.done} of ${p.total} · ${p.alive} working")
-                else tr("سنجش مستقیم: ${fa(p.done)} از ${fa(p.total)} · ${fa(p.alive)} سالم", "Direct: ${p.done} of ${p.total} · ${p.alive} working"),
+                tr("سنجش مستقیم: ${fa(p.done)} از ${fa(p.total)} · ${fa(p.alive)} سالم", "Direct: ${p.done} of ${p.total} · ${p.alive} working"),
                 color = Ios.Label, fontSize = 15.sp, modifier = Modifier.weight(1f),
             )
             Text(fa(clock), color = Ios.SecondaryLabel, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 6.dp))
@@ -412,24 +407,9 @@ internal fun TestProgress(p: OutlineTestProgress) {
         Spacer(Modifier.height(10.dp))
         LinearProgressIndicator(
             progress = if (p.total > 0) p.done.toFloat() / p.total else 0f,
-            color = if (warp) Ios.Orange else Ios.Green, trackColor = Color.White.copy(alpha = 0.15f),
+            color = Ios.Green, trackColor = Color.White.copy(alpha = 0.15f),
             modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
         )
-        val note = when {
-            warp && p.warpStarting -> tr("در حال روشن کردن وارپِ برنامه برای مرحلهٔ دوم؛ روی بعضی خط‌ها تا یک دقیقه طول می‌کشد.",
-                "Bringing up the app's WARP for the second pass; on some lines this takes up to a minute.")
-            warp && p.warpUnreachable -> tr("وارپ روی این اینترنت در دسترس نبود؛ سرورهایی که مستقیم جواب ندادند فعلاً سنجیده نشدند. بعداً یا روی اینترنت دیگری دوباره بسنجید.",
-                "WARP could not be reached on this internet; the servers that gave nothing straight were not tested. Try again later or on another network.")
-            warp -> tr("این سرورها مستقیم جواب ندادند و حالا از داخل وارپ دوباره امتحان می‌شوند؛ روی خطی که آدرسشان را می‌بندد، این راه بازشان می‌کند. هر وقت بخواهید متوقفش کنید؛ نتیجه‌ها می‌مانند.",
-                "These gave nothing straight and are tried again from inside WARP, which reaches servers this line blocks. Stop it whenever you like; the results so far are kept.")
-            p.warpQueued > 0 -> tr("${fa(p.warpQueued)} سرور مستقیم جواب ندادند؛ بعد از این مرحله از داخل وارپ دوباره امتحان می‌شوند.",
-                "${p.warpQueued} gave nothing straight; they get a second try from inside WARP after this pass.")
-            else -> null
-        }
-        if (note != null) {
-            Spacer(Modifier.height(8.dp))
-            Text(note, color = Ios.SecondaryLabel, fontSize = 12.sp, lineHeight = 18.sp)
-        }
     }
 }
 
@@ -569,7 +549,6 @@ private fun statusWord(conn: OutlineConnect): String = when (conn) {
 private fun stepLine(c: OutlineConnect.Connecting): String {
     val s = when (c.step) {
         OutlineConnect.Step.PREPARING -> if (c.serverId.isEmpty()) tr("پیدا کردن سریع‌ترین سرور…", "Finding the fastest server…") else tr("آماده‌سازی…", "Preparing…")
-        OutlineConnect.Step.WARP -> tr("روشن کردن وارپ برای عبور از فیلتر…", "Bringing up WARP to get past the filter…")
         OutlineConnect.Step.STARTING -> tr("راه‌اندازی تونل…", "Starting the tunnel…")
         OutlineConnect.Step.VERIFYING -> tr("بررسی عبور داده…", "Checking that data passes…")
     }
