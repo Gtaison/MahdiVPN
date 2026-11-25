@@ -46,8 +46,6 @@ fun TransportHost(transport: Transport, onExit: () -> Unit) {
         // Geph's settings are its engine's config, not the tunnel core's: its own page.
         PAGE_ADVANCED -> if (transport == Transport.GEPH) {
             { com.mlmvpn.scanner.ui.geph.GephSettingsScreen(onBack = ::pop, backLabel = transport.labelFa) }
-        } else if (transport == Transport.CFWG) {
-            { com.mlmvpn.scanner.ui.cfwarp.CfWarpSettingsScreen(onBack = ::pop, backLabel = transport.labelFa) }
         } else {
             { TransportAdvancedScreen(transport = transport, onBack = ::pop) }
         }
