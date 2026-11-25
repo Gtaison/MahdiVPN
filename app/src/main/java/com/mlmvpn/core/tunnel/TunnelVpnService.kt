@@ -3136,13 +3136,7 @@ class TunnelVpnService : VpnService(), TunnelEngine.CoreCallback, PsiphonTunnel.
      * reaches 100% or every mode has failed, so tun2socks is started right here
      * once it returns true.
      *
-     * [chainMode] is set for a chained Tor run as well, and it is load-bearing for
-     * three behaviours in [onEvent] that are about the outer leg rather than about
-     * Psiphon: the premature CONNECTED is swallowed, the outer traffic counters are
-     * dropped in favour of the inner leg's, and the outer exit IP is not published
-     * as the session's exit. All three are exactly what a chained Tor run needs.
-     * The Psiphon-specific reads of [chainMode] are unreachable here: no
-     * `psiphonLadder`, no `armRegionPhase`, no Psiphon config is built on this path.
+     * Tor uses its own transport ladder and has no outer tunnel leg.
      *
      * Note what is still NOT done here: no ladder, no `armRegionPhase`, no
      * `recordWorkingPlainTransport`. Those all belong to the Psiphon/WARP
@@ -4556,18 +4550,13 @@ class TunnelVpnService : VpnService(), TunnelEngine.CoreCallback, PsiphonTunnel.
             if (!GephEngine.isMainAlive) return "the Geph engine is not running"
             return null
         }
-        // Whole-device routing is common to Psiphon, the chain and Tor. Without
-        // it, packets from the TUN reach nothing regardless of tunnel state.
+        // Whole-device routing is common to Psiphon and Tor. Without it, packets from the TUN reach nothing.
         val needsRouting = psiphonVpnMode || nativeProxyMode || currentProtocol.contains("TOR")
         if (needsRouting && !Tun2SocksManager.isRunning) return "device routing stopped"
 
         if (currentProtocol.contains("TOR")) {
             if (!TorManager.isRunning) return "the Tor process exited"
             if (!SocksFront.isRunning) return "the Tor front-end stopped"
-            // Tor over WARP: tor stays alive when the outer leg dies, but every
-            // circuit it holds is dead, so tor's own liveness is not enough here.
-            // Checked last so a plainer cause is reported in preference to this.
-            if (chainMode && !TunnelEngine.isRunning()) return "the WARP leg carrying Tor stopped"
             return null
         }
         if (nativeProxyMode) {
@@ -5765,15 +5754,6 @@ class TunnelVpnService : VpnService(), TunnelEngine.CoreCallback, PsiphonTunnel.
             // Tor owns its own lifecycle the same way: everything to unwind lives in
             // TorManager/Tun2SocksManager, both already stopped above. All that is
             // left is the outer leg's bookkeeping, the TUN and the service.
-            if (chainMode) {
-                // Tor over WARP did attach the core, so it must detach — unlike the
-                // unchained Tor path, where attach/detach never ran. TunnelEngine.stop()
-                // above already ended the outer leg; without the detach the next
-                // connect starts with a core still bound to a dead service.
-                TunnelEngine.detach()
-                chainMode = false
-                chainOuterCommitted = false
-            }
             vpnModeActive.set(false)
             tun?.close()
             tun = null
@@ -6438,9 +6418,6 @@ class TunnelVpnService : VpnService(), TunnelEngine.CoreCallback, PsiphonTunnel.
      * carried the circuit, because "Tor" alone hides the difference between a
      * direct connection and one riding a Snowflake proxy.
      *
-     * Tor over WARP has no marker in [currentProtocol] — the chain is decided from
-     * the preference, not the config string — so [chainMode] is what distinguishes
-     * it here.
      */
     private fun prettyProtocol(): String = when {
         currentProtocol == GEPH_PROTOCOL -> "Geph"
@@ -6449,7 +6426,7 @@ class TunnelVpnService : VpnService(), TunnelEngine.CoreCallback, PsiphonTunnel.
         currentProtocol.contains(CHAIN_PROTOCOL_MARKER) -> "Psiphon over WARP"
         currentProtocol.contains("TOR") -> {
             val mode = TorManager.activeMode?.let { " (${it.label})" } ?: ""
-            if (chainMode) "Tor$mode over WARP" else "Tor$mode"
+            "Tor$mode"
         }
         currentProtocol.contains("PSIPHON") -> "Psiphon"
         currentProtocol.contains("MASQUE") -> "MASQUE"
