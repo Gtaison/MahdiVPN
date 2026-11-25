@@ -52,18 +52,9 @@ android {
         }
     }
 
-    // No externalNativeBuild block, deliberately.
-    //
-    // src/main/cpp/ carries the sources for two of the libraries in jniLibs -- the JNI shim
-    // over the tunnel core (libtunneljni.so) and badvpn's tun2socks/lwIP userspace stack
-    // (libtun2socks.so) -- but both are checked in already built, exactly like libaether.so,
-    // libtun2proxy.so and every other core in this APK. Wiring CMake up here would demand an
-    // NDK and CMake 3.22 on every machine that builds the app, and would then emit the same
-    // two file names the packager is already taking from jniLibs.
-    //
-    // To rebuild them: install the NDK, restore an `externalNativeBuild { cmake { path
-    // file('src/main/cpp/CMakeLists.txt') } }` block here, and delete the two prebuilt copies
-    // from src/main/jniLibs/*/ first so the names cannot collide.
+    // CMake builds the vendored badvpn/lwIP tun2socks bridge. The optional
+    // Aether JNI shim is emitted only when the matching libtunnelcore.so is present
+    // in jniLibs; that engine is otherwise supplied by the signed engine channel.
 
     // Per-CPU builds plus one that runs everywhere.
     //
