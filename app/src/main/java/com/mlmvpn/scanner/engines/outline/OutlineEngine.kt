@@ -71,13 +71,6 @@ object OutlineEngine {
      * (one WireGuard session carries the whole batch). It used to be the first 60 of them -- on a
      * list of a thousand, nine hundred were written off without ever being tried that way.
      */
-    private const val CF_TIMEOUT_MS = 10_000
-    private const val CF_BATCH = 96
-    /**
-     * The whole batch at once: one WARP session carries 96 flows easily, and a batch in two rounds of
-     * 64 took ~21 s on the user's Wi-Fi (2026-10-18: 2205 servers in ~8 min, 185 working through WARP).
-     */
-    private const val CF_PARALLEL = 96
     private const val SPEED_URL = "https://speed.cloudflare.com/__down?bytes=3000000"
 
     private lateinit var app: Context
@@ -354,9 +347,6 @@ object OutlineEngine {
      *     answers goes into a real request through it in the `:xprobe` process (OutlineProbe) right
      *     away -- not after the whole list was knocked. A public server that panics Xray there ends
      *     that process, not the app (crash seen 2026-10-11).
-     *  2. From inside Cloudflare WARP (OutlineCf), for every server that gave nothing straight -- what
-     *     brought Windscribe, Proton and Amnezia back on lines that drop their servers.
-     *
      * A server waiting for the second pass is still pending: it is written down once, with what the
      * second pass found, so one test never counts as two failures against it.
      */
@@ -379,75 +369,23 @@ object OutlineEngine {
                 val a = if (ok) alive.incrementAndGet() else alive.get()
                 _progress.update { p -> p.copy(done = maxOf(p.done, d), alive = maxOf(p.alive, a)) }
             }
-            fun record(id: String, ms: Long?, viaCf: Boolean = false) {
-                buffer[id] = OutlineBrain.Result(id, ms, viaCf = viaCf)
+            fun record(id: String, ms: Long?) {
+                buffer[id] = OutlineBrain.Result(id, ms)
                 _pending.update { it - id }
             }
-            fun report(id: String, ms: Long?, viaCf: Boolean = false) { record(id, ms, viaCf); count(ms != null) }
+            fun report(id: String, ms: Long?) { record(id, ms); count(ms != null) }
             try {
                 if (!FluxNet.online(app)) { _notice.value = Notice.Offline; return@launch }
                 FreeConfigEngine.ensureXrayEnv(app)
-                // The in-core carrier is not asked while a tunnel of ours rides it: its key is the
-                // tunnel's, and a second session would take it away (one key, one session). The WARP
-                // leg has an identity of its own, so it is always a way.
-                val carrierBusy = (isOurs() && legPortInUse() == 0 && (_connect.value as? OutlineConnect.Connected)?.let { c ->
-                    store.current.statsFor(net)[c.serverId]?.viaCf } == true) ||
-                    (com.mlmvpn.scanner.engines.amnezia.AmzEngine.connect.value as? com.mlmvpn.scanner.engines.amnezia.AmzConnect.Connected)?.via == "cf"
                 val order = servers.withIndex().associate { (i, s) -> s.id to i }
                 val byId = servers.associateBy { it.id }
                 val second = ConcurrentHashMap.newKeySet<String>()
-                // What happened, for the log: the answer to «why so few?» is in these numbers.
+                // Failed direct probes are retained as failures; no WARP fallback is attempted.
                 val knockedClosed = AtomicInteger()
                 val knockedOpen = AtomicInteger()
                 val straightOk = AtomicInteger()
                 coroutineScope {
-                    // Both ways into WARP are found while the first pass runs, so the second pass can
-                    // start the moment it ends. The app's own WARP engine goes first (WarpVia: the leg a
-                    // tunnel of ours already rides, or one of the test's own): on the user's line it
-                    // carried twice the servers the in-core carrier did, same list, ten minutes apart
-                    // (2026-10-18: 186 against 91 of 2210). The carrier is the way when no leg comes up.
-                    val carrierSoon = if (carrierBusy) null else async {
-                        runCatching { com.mlmvpn.scanner.engines.amnezia.AmzEngine.warpCarrier(app) }.getOrNull()
-                    }
-                    val againSoon = CompletableDeferred<List<OutlineServer>>()
-                    val inSecond = AtomicBoolean(false)
-                    val legKind = AtomicReference<com.mlmvpn.core.warp.WarpVia.Kind?>(null)
-                    val secondPass = launch {
-                        com.mlmvpn.core.warp.WarpVia.use(app, onVia = { kind ->
-                            legKind.set(kind)
-                            if (kind != null && kind != com.mlmvpn.core.warp.WarpVia.Kind.DIRECT && inSecond.get()) {
-                                _progress.update { it.copy(warpStarting = false, phaseStartedAt = System.currentTimeMillis()) }
-                            }
-                        }) { port, kind ->
-                            val again = againSoon.await()
-                            if (again.isEmpty()) return@use
-                            if (kind != com.mlmvpn.core.warp.WarpVia.Kind.DIRECT) {
-                                Log.i(TAG, "test: ${again.size} again through WARP (Aether leg on $port)")
-                                OutlineProbe.test(app, again, CF_TIMEOUT_MS, null, batch = CF_BATCH, parallel = CF_PARALLEL, viaSocks = port) { id, ms ->
-                                    report(id, ms, viaCf = ms != null)
-                                }
-                                return@use
-                            }
-                            // No leg on this line: the in-core carrier, when it found a way in.
-                            val carrier = carrierSoon?.await()
-                            if (carrier != null) {
-                                Log.i(TAG, "test: ${again.size} again through WARP (in-core carrier; no leg came up)")
-                                _progress.update { it.copy(warpStarting = false, phaseStartedAt = System.currentTimeMillis()) }
-                                OutlineProbe.test(app, again, CF_TIMEOUT_MS, carrier, batch = CF_BATCH, parallel = CF_PARALLEL) { id, ms ->
-                                    report(id, ms, viaCf = ms != null)
-                                }
-                            } else {
-                                Log.i(TAG, "test: no way into WARP on this line; ${again.size} stay as the first pass found them")
-                                _progress.update { it.copy(warpStarting = false, warpUnreachable = true) }
-                                again.forEach { record(it.id, null) }
-                            }
-                        }
-                    }
-                    fun failedStraight(id: String) {
-                        second += id
-                        count(false)
-                        _progress.update { p -> p.copy(warpQueued = maxOf(p.warpQueued, second.size)) }
-                    }
+                    fun failedStraight(id: String) { report(id, null) }
                     val open = Channel<OutlineServer>(Channel.UNLIMITED)
                     launch {
                         val gate = Semaphore(TCP_WORKERS)
@@ -469,25 +407,10 @@ object OutlineEngine {
                     }
                     Log.i(TAG, "test: straight ${straightOk.get()} of ${servers.size} -- knock closed ${knockedClosed.get()}, " +
                         "open ${knockedOpen.get()} (of those, real request failed ${knockedOpen.get() - straightOk.get()})")
-                    val again = second.sortedBy { order[it] ?: Int.MAX_VALUE }.mapNotNull { byId[it] }
-                    if (again.isNotEmpty()) {
-                        done.set(0)
-                        // Still starting only while the leg has not answered; WarpVia's callback says when
-                        // it does. Read inside the update, after the flag: a callback racing this one then
-                        // either sees the flag or is seen here.
-                        inSecond.set(true)
-                        _progress.update { p ->
-                            val leg = legKind.get()
-                            p.copy(phase = OutlineTestProgress.Phase.WARP, done = 0, total = again.size, warpQueued = 0,
-                                warpStarting = leg == null || leg == com.mlmvpn.core.warp.WarpVia.Kind.DIRECT,
-                                phaseStartedAt = System.currentTimeMillis())
-                        }
-                    } else carrierSoon?.cancel()
-                    againSoon.complete(again)
-                    secondPass.join()
+
                 }
                 flusher.cancel()
-                Log.i(TAG, "test: ${alive.get()} of ${servers.size} working (${straightOk.get()} straight, ${alive.get() - straightOk.get()} through WARP)")
+                Log.i(TAG, "test: ${alive.get()} of ${servers.size} working (${straightOk.get()} direct)")
                 // Everything failed: either the servers are dead or the line went away. Only the
                 // second is checked, and then nothing is learned.
                 if (alive.get() == 0 && servers.size >= 5 && !FluxNet.online(app)) {
@@ -544,52 +467,7 @@ object OutlineEngine {
         _connect.value = OutlineConnect.Idle
         _speed.value = SpeedState.None
         stopService()
-        scope.launch(Dispatchers.IO) { stopLeg() }
-    }
 
-    // ---------------------------------------------------------------- the WARP leg
-
-    /**
-     * The app's own WARP engine ([com.mlmvpn.core.warp.WarpLeg]) on a loopback port, for a connect
-     * "from inside WARP" when the in-core carrier finds no way in on this line. It lives exactly as
-     * long as the tunnel riding it: up before the tunnel starts, stopped when the user disconnects,
-     * another engine takes the VPN, or the connect ends somewhere else; brought back on the same port
-     * if it ends under a live tunnel, so the tunnel's config stays right.
-     */
-    private const val LEG_PORT = 20961
-    private const val LEG_OWNER = "outline"
-    private val leg = com.mlmvpn.core.warp.WarpLeg(LEG_PORT, "warp/outline-leg")
-    @Volatile private var legInUse = false
-
-    /** The leg's port while a tunnel of ours rides it, else 0. */
-    private fun legPortInUse(): Int = if (legInUse && leg.isAlive) LEG_PORT else 0
-
-    private suspend fun ensureLeg(): Int? = withContext(Dispatchers.IO) {
-        if (leg.isAlive) return@withContext LEG_PORT
-        leg.onDied = null
-        if (!leg.start(app, cancelled = { !wantConnected })) return@withContext null
-        leg.onDied = { onLegDied() }
-        com.mlmvpn.core.warp.WarpVia.register(LEG_OWNER, LEG_PORT)
-        LEG_PORT
-    }
-
-    private fun stopLeg() {
-        legInUse = false
-        com.mlmvpn.core.warp.WarpVia.unregister(LEG_OWNER)
-        leg.onDied = null
-        leg.stop()
-    }
-
-    private fun onLegDied() {
-        com.mlmvpn.core.warp.WarpVia.unregister(LEG_OWNER)
-        if (!wantConnected || !legInUse) return
-        scope.launch(Dispatchers.IO) {
-            Log.w(TAG, "WARP leg ended under the tunnel; starting it again")
-            if (leg.start(app, cancelled = { !wantConnected || !legInUse })) {
-                leg.onDied = { onLegDied() }
-                com.mlmvpn.core.warp.WarpVia.register(LEG_OWNER, LEG_PORT)
-            }
-        }
     }
 
     private suspend fun connectLoop(serverId: String?) {
@@ -656,33 +534,20 @@ object OutlineEngine {
         _connect.value = OutlineConnect.Connecting(server.id, OutlineConnect.Step.PREPARING, attempt)
         withContext(Dispatchers.IO) { com.mlmvpn.scanner.ui.tunnel.TunnelExclusion.releaseForXray(app) }
         if (com.mlmvpn.scanner.utils.VpnConfig.parseUri(server.uri) == null) return OutlineConnect.Reason.BAD_CONFIG
-        // Straight first, then from inside Cloudflare WARP; only WARP when that is how it worked here.
-        val onlyCf = store.current.statsFor(_net.value)[server.id]?.viaCf == true
+        // Outline connects directly; no WARP fallback or proxy is involved.
+        if (!wantConnected) return null
+        _connect.value = OutlineConnect.Connecting(server.id, OutlineConnect.Step.STARTING, attempt)
+        val up = startTunnel(server.uri)
         var rtt: Long? = null
-        var viaCf = false
         var reason: OutlineConnect.Reason = OutlineConnect.Reason.NO_DATA
-        for (cf in if (onlyCf) listOf(true) else listOf(false, true)) {
-            if (!wantConnected) return null
-            _connect.value = OutlineConnect.Connecting(server.id, OutlineConnect.Step.STARTING, attempt)
-            val config = if (!cf) { legInUse = false; server.uri } else {
-                // The tests' shared WARP session uses the same key: it goes before the tunnel's own.
-                com.mlmvpn.scanner.engines.windscribe.WsWarpCarrier.closeShared()
-                stopService()
-                val carrier = com.mlmvpn.scanner.engines.amnezia.AmzEngine.warpCarrier(app)
-                if (carrier != null) {
-                    legInUse = false
-                    OutlineCf.tunnelConfig(server.uri, carrier, LocalPort.get(app)) ?: break
-                } else {
-                    // No way in for the in-core carrier on this line: the app's own WARP engine.
-                    _connect.value = OutlineConnect.Connecting(server.id, OutlineConnect.Step.WARP, attempt)
-                    val port = ensureLeg() ?: break
-                    if (!wantConnected) return null
-                    legInUse = true
-                    _connect.value = OutlineConnect.Connecting(server.id, OutlineConnect.Step.STARTING, attempt)
-                    OutlineCf.tunnelConfigVia(server.uri, port, LocalPort.get(app)) ?: break
-                }
-            }
-            val up = startTunnel(config)
+        if (up) {
+            _connect.value = OutlineConnect.Connecting(server.id, OutlineConnect.Step.VERIFYING, attempt)
+            rtt = canary(attempts = 3)
+        } else {
+            reason = if (MyVpnService.connectionPhaseFlow.value == MyVpnService.Phase.FAILED) OutlineConnect.Reason.VPN_REFUSED else OutlineConnect.Reason.BAD_CONFIG
+        }
+        if (!wantConnected) return null
+        if (rtt == null) return reason
             if (!wantConnected) return null
             if (!up) {
                 if (MyVpnService.connectionPhaseFlow.value == MyVpnService.Phase.FAILED) reason = OutlineConnect.Reason.VPN_REFUSED
@@ -698,8 +563,8 @@ object OutlineEngine {
         if (rtt == null) return reason
         val since = System.currentTimeMillis()
         _connect.value = OutlineConnect.Connected(server.id, server.country, rtt, since)
-        store.update { OutlineBrain.record(it, _net.value, listOf(OutlineBrain.Result(server.id, rtt, viaCf = viaCf)), since) }
-        Log.i(TAG, "connected${if (viaCf) " via Cloudflare WARP" else ""}: $server in $rtt ms")
+        store.update { OutlineBrain.record(it, _net.value, listOf(OutlineBrain.Result(server.id, rtt)), since) }
+        Log.i(TAG, "connected directly: $server in $rtt ms")
         // Shadowmere is filtered on the line: now that a tunnel is up, its newest keys come through it.
         refresh(force = false, by = Trigger.CONNECT)
         // Where it really exits, asked through the tunnel; the server moves to that country.
