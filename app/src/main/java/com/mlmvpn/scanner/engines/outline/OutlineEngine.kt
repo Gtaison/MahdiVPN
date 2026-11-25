@@ -9,7 +9,6 @@ import com.mlmvpn.scanner.engines.flux.FluxNet
 import com.mlmvpn.scanner.engines.freeconfig.FreeConfigEngine
 import com.mlmvpn.scanner.utils.LocalPort
 import com.mlmvpn.scanner.utils.NetworkSettings
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -36,9 +35,7 @@ import java.net.InetSocketAddress
 import java.net.Proxy
 import java.net.Socket
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.atomic.AtomicReference
 
 /**
  * «Outline»: Outline VPN access keys -- free public Shadowsocks servers and the user's own keys --
@@ -347,8 +344,6 @@ object OutlineEngine {
      *     answers goes into a real request through it in the `:xprobe` process (OutlineProbe) right
      *     away -- not after the whole list was knocked. A public server that panics Xray there ends
      *     that process, not the app (crash seen 2026-10-11).
-     * A server waiting for the second pass is still pending: it is written down once, with what the
-     * second pass found, so one test never counts as two failures against it.
      */
     private fun start(servers: List<OutlineServer>, net: String) {
         if (servers.isEmpty()) return
@@ -377,10 +372,7 @@ object OutlineEngine {
             try {
                 if (!FluxNet.online(app)) { _notice.value = Notice.Offline; return@launch }
                 FreeConfigEngine.ensureXrayEnv(app)
-                val order = servers.withIndex().associate { (i, s) -> s.id to i }
-                val byId = servers.associateBy { it.id }
-                val second = ConcurrentHashMap.newKeySet<String>()
-                // Failed direct probes are retained as failures; no WARP fallback is attempted.
+                        // Failed direct probes are retained as failures; no WARP fallback is attempted.
                 val knockedClosed = AtomicInteger()
                 val knockedOpen = AtomicInteger()
                 val straightOk = AtomicInteger()
@@ -402,7 +394,7 @@ object OutlineEngine {
                         }
                         open.close()
                     }
-                    OutlineProbe.testStream(app, open, REAL_TIMEOUT_MS, null) { id, ms ->
+                    OutlineProbe.testStream(app, open, REAL_TIMEOUT_MS) { id, ms ->
                         if (ms != null) { straightOk.incrementAndGet(); report(id, ms) } else failedStraight(id)
                     }
                     Log.i(TAG, "test: straight ${straightOk.get()} of ${servers.size} -- knock closed ${knockedClosed.get()}, " +
@@ -411,8 +403,7 @@ object OutlineEngine {
                 }
                 flusher.cancel()
                 Log.i(TAG, "test: ${alive.get()} of ${servers.size} working (${straightOk.get()} direct)")
-                // Everything failed: either the servers are dead or the line went away. Only the
-                // second is checked, and then nothing is learned.
+                // If the network went offline during the test, discard the results.
                 if (alive.get() == 0 && servers.size >= 5 && !FluxNet.online(app)) {
                     buffer.clear()
                     _notice.value = Notice.Offline
