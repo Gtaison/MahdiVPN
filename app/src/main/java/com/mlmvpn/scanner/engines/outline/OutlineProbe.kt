@@ -68,6 +68,7 @@ internal object OutlineProbe {
     }
 
     /** Measures every server in the stream using direct Shadowsocks connections only. */
+    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun testStream(context: Context, input: ReceiveChannel<OutlineServer>, timeoutMs: Int,
                            batch: Int = BATCH, parallel: Int = PARALLEL, onResult: (String, Long?) -> Unit) {
         val app = context.applicationContext
