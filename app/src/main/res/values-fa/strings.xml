@@ -5113,9 +5113,6 @@
     <string name="fenix_step_tunnel">ساختن تونل…</string>
     <string name="fenix_step_check">تست واقعی اتصال…</string>
     <string name="fenix_ms">%1$s میلی‌ثانیه</string>
-    <string name="fenix_mae_section">MAE</string>
-    <string name="fenix_mae_toggle">استفاده در MAE</string>
-    <string name="fenix_mae_footer">MAE هم می‌تواند از FENIX به‌عنوان خروجی خارجی استفاده کند و برای هر اپ جداگانه تست می‌کند که کار می‌کند یا نه.</string>
     <string name="fenix_fastest">سریع‌ترین کشور</string>
     <string name="fenix_fastest_detail">خودکار، با پینگ از اینترنت خودتان</string>
     <string name="fenix_recommended">پیشنهاد موزیلا</string>
@@ -5538,7 +5535,6 @@
     <!-- Home-screen widgets and Widget Studio. -->
     <string name="home_widgetstudio">ویجت استدیو</string>
     <string name="widget_method_desc">یک لمس برای اتصال یا قطع</string>
-    <string name="widget_gereh_desc">پیام‌های تازهٔ گره، با یک لمس</string>
     <string name="widget_studio_desc">طرح دلخواه خودتان، ساخته‌شده در ویجت استدیو</string>
     <string name="widget_studio_small">ویجت استدیو · کوچک</string>
     <string name="widget_studio_medium">ویجت استدیو · متوسط</string>
