@@ -293,39 +293,6 @@ internal object ProtonAdapter : XrayAdapter() {
     }
 }
 
-// ---- MAE ---------------------------------------------------------------------------------------
-
-internal object MaeAdapter : XrayAdapter() {
-    override val id = "mae"
-    override val homeId = "mae"
-    override val kind = MethodKind.TUNNEL
-    override val estimateSec = 30
-    /** MAE sends only what needs it abroad; ordinary traffic leaving in Iran is its design, not a fault. */
-    override fun requiresForeignExit(variantId: String) = false
-
-    override fun howTested() = tr(
-        "همان کانفیگی که MAE برای اتصال روی همین شبکه می‌سازد در هستهٔ تست بالا می‌آید و با قواعد خودش سنجیده می‌شود.",
-        "The very config MAE compiles to connect on this network runs in the test core, with its own rules.")
-
-    override fun readiness(ctx: Context): Readiness =
-        if (runCatching { CloudManager(ctx).loadedAccounts().isNotEmpty() }.getOrDefault(false)) Readiness.Ready
-        else Readiness.NeedsSetup(tr("حساب کلادفلر لازم است", "A Cloudflare account is needed"))
-
-    override fun variants(ctx: Context, line: LineSnapshot) = listOf(Variant("mae", "MAE", quick = true, budgetMs = 90_000))
-
-    override suspend fun prepare(kit: ScoutKit, v: Variant): Prepared {
-        kit.step(Step.PREPARING, tr("ساخت کانفیگ MAE برای این شبکه…", "Compiling MAE's config for this network…"))
-        val cfg = withContext(Dispatchers.IO) { com.mlmvpn.scanner.engines.mae.MaeEngine.scoutConfig(kit.context) }
-            ?: return Prepared.Failed(ScoutStatus.INCONCLUSIVE, tr("کانفیگ MAE ساخته نشد", "MAE's config could not be compiled"))
-        // One inbound under the tun's own tag, sniffing on, so MAE's rules see what an app's traffic shows them.
-        val j = JSONObject(cfg)
-        j.put("inbounds", JSONArray().put(JSONObject().put("tag", com.mlmvpn.scanner.engines.mae.compile.MaeConfigCompiler.TUN_IN_TAG)
-            .put("protocol", "socks").put("listen", "127.0.0.1").put("port", 10_999)
-            .put("sniffing", JSONObject().put("enabled", true).put("destOverride", JSONArray().put("http").put("tls")))))
-        return Prepared.Ready(XrayHandle(j.toString(), keepRouting = true))
-    }
-}
-
 // ---- Google Script -----------------------------------------------------------------------------
 
 internal object GoogleScriptAdapter : ScoutAdapter() {
