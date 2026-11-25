@@ -726,27 +726,7 @@ fun SettingsScreen(
                         ).show()
                     },
                 )
-                // Gereh taken out from its tile's menu (q3): the one way back
-                var gerehRemoved by remember { mutableStateOf(com.mlmvpn.scanner.chat.MlmChat.removed(context)) }
-                if (gerehRemoved) {
-                    Separator()
-                    SettingsRow(
-                        title = stringResource(R.string.gereh_restore),
-                        subtitle = stringResource(R.string.gereh_restore_info),
-                        icon = Icons.Default.Forum,
-                        tint = Ios.Blue,
-                        showChevron = false,
-                        onClick = {
-                            com.mlmvpn.scanner.chat.MlmChat.restore(context)
-                            gerehRemoved = false
-                            android.widget.Toast.makeText(
-                                context,
-                                context.getString(R.string.gereh_restored),
-                                android.widget.Toast.LENGTH_SHORT,
-                            ).show()
-                        },
-                    )
-                }
+
             }
 
             SettingsSectionHeader(stringResource(R.string.settings_group_about))
