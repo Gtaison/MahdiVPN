@@ -589,15 +589,8 @@ class TunnelVpnService : VpnService(), TunnelEngine.CoreCallback, PsiphonTunnel.
     private val lanternNetCheckPending = AtomicBoolean(false)
 
     /** «وارپ» carries this session: its own WARP engine, reached through tun2proxy. */
-    @Volatile private var cfwarpMode = false
 
     /** «وارپ» runs with the IPv4 exit's front between the routing and its port (started by this session). */
-    @Volatile private var cfwarpFront = false
-    private var cfwarpMonitorTask: java.util.concurrent.ScheduledFuture<*>? = null
-    private val cfwarpRestarting = AtomicBoolean(false)
-    private var cfwarpDead = 0
-    private var cfwarpRxBase = 0L
-    private var cfwarpTxBase = 0L
 
     /**
      * True while running Psiphon-over-WARP: the Rust core holds a WARP tunnel and
@@ -1133,21 +1126,15 @@ class TunnelVpnService : VpnService(), TunnelEngine.CoreCallback, PsiphonTunnel.
         /** Engine restarts in a row (TUN kept) before the session is handed to the reconnect ladder. */
         private const val GEPH_MAX_RESTARTS = 4
 
-        /** «وارپ»: the protocol value [com.mlmvpn.scanner.ui.tunnel.Transport.CFWG] sends. */
-        private const val CFWG_PROTOCOL = "CFWG"
-
-        /** A pinned NAT64 gateway carries within seconds or not at all (see startCfWarpVerified). */
-        private const val NAT64_GATEWAY_BUDGET_MS = 30_000L
-
         /** MASQUE / WireGuard on a pinned gateway: identity, handshake and data-plane check fit. */
         private const val NAT64_NATIVE_BUDGET_MS = 45_000L
+        private const val SCREEN_OFF_VERIFY_EVERY = 4L
 
         /** A pinned gateway that came up has this long to bring something back (see watchNat64Silence). */
         private const val NAT64_SILENT_MS = 15_000L
 
         /** Owners of the raw WARP ports this service publishes to WarpVia (measurements ride them). */
         private const val WARP_VIA_TUNNEL = "tunnel"
-        private const val WARP_VIA_CFWARP = "cfwarp"
 
         /** The ladder's extra way: MASQUE started on HTTP/2 (see warpLadderNext), and the mark that asks for it. */
         private const val MASQUE_ON_H2 = "masque-h2"
@@ -1155,21 +1142,6 @@ class TunnelVpnService : VpnService(), TunnelEngine.CoreCallback, PsiphonTunnel.
 
         /** How many of a country's gateways one connect tries before it gives up. */
         private const val NAT64_MAX_GATEWAYS = 4
-
-        /** Time for «وارپ» to find an endpoint that really carries traffic; a full rescan fits. */
-        private const val CFWG_CONNECT_BUDGET_MS = 150_000L
-
-        /**
-         * How often «وارپ» re-proves itself. Endpoints here go stale in about a minute (measured on
-         * the desktop), so the proof is repeated rather than trusted.
-         */
-        private const val CFWG_VERIFY_EVERY_S = 45L
-
-        /** With the screen off, only every this-many-th proof is made (see [startCfWarpMonitor]). */
-        private const val CFWG_VERIFY_SCREEN_OFF_EVERY = 4L
-
-        /** Dead endpoints in a row that «وارپ» replaces on its own before the reconnect ladder takes over. */
-        private const val CFWG_MAX_DEAD = 4
 
         /** «لنترن»: the protocol value [com.mlmvpn.scanner.ui.tunnel.Transport.LANTERN] sends. */
         private const val LANTERN_PROTOCOL = "LANTERN"
@@ -2803,7 +2775,6 @@ class TunnelVpnService : VpnService(), TunnelEngine.CoreCallback, PsiphonTunnel.
             override fun onAvailable(network: Network) {
                 setUnderlyingNetworks(arrayOf(network))
                 if (gephMode) onGephNetworkChange(network)
-                if (cfwarpMode) onCfWarpNetworkChange()
                 if (lanternMode) onLanternNetworkChange()
             }
 
@@ -3165,15 +3136,6 @@ class TunnelVpnService : VpnService(), TunnelEngine.CoreCallback, PsiphonTunnel.
      * reaches 100% or every mode has failed, so tun2socks is started right here
      * once it returns true.
      *
-     * ## Tor over WARP
-     *
-     * When [TorManager.chainArmed] agrees, a WARP leg is raised first and Tor is
-     * pointed at its SOCKS listener, exactly as Psiphon-over-WARP does — the same
-     * [raiseOuterLeg] ladder (MASQUE → WireGuard → WoW) and the same per-device
-     * memory of which rung worked, untouched. Only Tor's own ladder narrows:
-     * Direct then Meek, because those are the two that were measured working
-     * through a proxy (see [TorManager] `chainedLadder`).
-     *
      * [chainMode] is set for a chained Tor run as well, and it is load-bearing for
      * three behaviours in [onEvent] that are about the outer leg rather than about
      * Psiphon: the premature CONNECTED is swallowed, the outer traffic counters are
@@ -3490,244 +3452,6 @@ class TunnelVpnService : VpnService(), TunnelEngine.CoreCallback, PsiphonTunnel.
                 failAndStop(e.message ?: "Tor start failed")
             }
         }
-    }
-
-    // ------------------------------------------------------ «وارپ» (standalone WARP)
-
-    /**
-     * «وارپ»: plain Cloudflare WARP on an engine of its own (see CfWarpEngine) -- the desktop's
-     * warp-manager.js. The identity is its own and made with WARP switched on; the data plane is
-     * Aether's WireGuard with the handshake obfuscated; "connected" is Cloudflare's trace page
-     * answering `warp=on` through it.
-     *
-     * The TUN is opened only after that proof, the way the Aether path in MyVpnService does it: an
-     * endpoint scan can take a minute, and during it the phone keeps its ordinary connection
-     * instead of sitting behind a tunnel that carries nothing yet.
-     */
-    private fun startCfWarpTunnel() {
-        cfwarpMode = true
-        cfwarpDead = 0
-        runOnWorker {
-            try {
-                if (!com.mlmvpn.core.warp.CfWarpEngine.available(this)) error(getString(R.string.cfwarp_not_installed))
-                sendStatus(STATUS_CONNECTING, getString(R.string.cfwarp_stage_identity), 5)
-                com.mlmvpn.core.warp.CfWarpEngine.ensureIdentity(this) { stopRequested.get() }
-                if (stopRequested.get()) return@runOnWorker
-                com.mlmvpn.core.warp.CfWarpEngine.onUnexpectedExit = { code -> onCfWarpDied(code) }
-                val trace = startCfWarpVerified()
-                if (stopRequested.get()) return@runOnWorker
-                if (trace == null) error(cfWarpNoEndpointMessage())
-
-                val mtu = tunMtu(com.mlmvpn.scanner.utils.NetworkSettings.Method.CFWARP)
-                tun = Builder()
-                    .setSession(getString(R.string.app_name))
-                    .applyPlatformDefaults()
-                    .setMtu(mtu)
-                    .addAddress("10.0.0.2", 32)
-                    .routeAllV4()
-                    .apply {
-                        // IPv6 into the tunnel too (tun2proxy carries it); below 1280 no v6
-                        // address fits, and adding nothing of the family makes Android block it.
-                        if (mtu >= IPV6_MIN_MTU) {
-                            addAddress("fd00:1:2:3:4:5:6:2", 128)
-                            routeAllV6()
-                        }
-                    }
-                    .addDnsServer("1.1.1.1")
-                    .applySplitTunneling()
-                    .establish() ?: error("Android could not establish the VPN interface")
-                vpnModeActive.set(true)
-                // «کشور خروجی با پراکسی رایگان»: the free proxy sits in a front between the device's
-                // routing and WARP's port; names reach it unresolved (tun2proxy's virtual DNS), so the
-                // proxy resolves them where it is.
-                val exitOn = com.mlmvpn.core.warp.Ipv4Exits.isOn(this)
-                if (exitOn) {
-                    cfwarpFront = SocksFront.start(
-                        listenPort = SocksFront.FRONT_PORT,
-                        socksPort = com.mlmvpn.core.warp.CfWarpEngine.SOCKS_PORT,
-                        dnsPort = 0,
-                        dnsTcpResolver = "${com.mlmvpn.scanner.utils.NetworkSettings.backendDns(this)}:53",
-                        exit = ipv4ExitHop(),
-                    )
-                    if (!cfwarpFront) error("Could not start the local proxy front-end")
-                }
-                val routedPort = if (cfwarpFront) SocksFront.FRONT_PORT else com.mlmvpn.core.warp.CfWarpEngine.SOCKS_PORT
-                val args = "tun2proxy --proxy socks5://127.0.0.1:$routedPort " +
-                    "--dns virtual --verbosity warn --close-fd-on-drop false"
-                if (!com.mlmvpn.scanner.tun.Tun2proxyClient.start(this, tun!!.fd, args, mtu)) {
-                    error("Could not start device routing")
-                }
-                applyCfWarpTrace(trace)
-                activeSocksPort = routedPort
-                currentVpnIp = ""
-                cfwarpRxBase = android.net.TrafficStats.getUidRxBytes(android.os.Process.myUid()).coerceAtLeast(0L)
-                cfwarpTxBase = android.net.TrafficStats.getUidTxBytes(android.os.Process.myUid()).coerceAtLeast(0L)
-                sendStatus(STATUS_CONNECTED)
-                ConnectionLog.record("WARP: connected (colo ${trace.colo}, ${trace.loc})")
-                repostNotification()
-                startCfWarpMonitor()
-                startWatchdog()
-                com.mlmvpn.core.warp.WarpVia.register(WARP_VIA_CFWARP, com.mlmvpn.core.warp.CfWarpEngine.SOCKS_PORT)
-                if (cfwarpFront) startIpv4ExitSession(SocksFront.FRONT_PORT, com.mlmvpn.core.warp.CfWarpEngine.SOCKS_PORT)
-            } catch (e: Exception) {
-                ConnectionLog.record("WARP start failed: ${e.message}")
-                com.mlmvpn.core.warp.CfWarpEngine.onUnexpectedExit = null
-                com.mlmvpn.scanner.tun.Tun2proxyClient.stop(this)
-                com.mlmvpn.core.warp.CfWarpEngine.stop()
-                failAndStop(e.message ?: getString(R.string.cfwarp_no_endpoint))
-            }
-        }
-    }
-
-    /**
-     * Starts «وارپ»'s engine and waits for traffic to really cross.
-     *
-     * Direct: one run that scans, with the whole budget. With an exit country: each of that
-     * country's NAT64 gateways in turn, best first, each with a short budget -- a pinned endpoint
-     * either carries within seconds or not at all, so waiting the scan's two and a half minutes on
-     * a dead gateway would only delay the next one. A gateway that works is remembered as good,
-     * one that does not goes to the back of the line for next time.
-     */
-    private fun startCfWarpVerified(): com.mlmvpn.core.warp.CfWarpEngine.Trace? {
-        val share = com.mlmvpn.scanner.lan.LanShare.sharingActive(this)
-        val nat64 = com.mlmvpn.core.warp.Nat64Exits
-        if (nat64.isDirect(this)) {
-            com.mlmvpn.core.warp.CfWarpEngine.start(this, share, peer = null)
-            return com.mlmvpn.core.warp.CfWarpEngine.awaitVerified(
-                CFWG_CONNECT_BUDGET_MS, cancelled = { stopRequested.get() },
-            ) { percent, text -> sendStatus(STATUS_CONNECTING, text, percent) }
-        }
-        if (!com.mlmvpn.scanner.data.CfFamily.hasIpv6Route()) error(getString(R.string.nat64_no_ipv6))
-        val endpoints = nat64.candidates(this)
-            .mapNotNull { nat64.endpoint(it, com.mlmvpn.core.warp.Nat64Exits.Proto.WG) }
-            .take(NAT64_MAX_GATEWAYS)
-        for ((i, peer) in endpoints.withIndex()) {
-            if (stopRequested.get()) return null
-            ConnectionLog.record("WARP: exit country through NAT64 gateway ${i + 1}/${endpoints.size} ($peer)")
-            com.mlmvpn.core.warp.CfWarpEngine.start(this, share, peer = peer)
-            val trace = com.mlmvpn.core.warp.CfWarpEngine.awaitVerified(
-                NAT64_GATEWAY_BUDGET_MS, cancelled = { stopRequested.get() },
-            ) { percent, text -> sendStatus(STATUS_CONNECTING, text, percent) }
-            nat64.reportOutcome(this, peer, ok = trace != null)
-            if (trace != null) return trace
-            ConnectionLog.record("WARP: NAT64 gateway $peer carried nothing; trying the next")
-        }
-        return null
-    }
-
-    private fun cfWarpNoEndpointMessage(): String =
-        if (com.mlmvpn.core.warp.Nat64Exits.isDirect(this)) getString(R.string.cfwarp_no_endpoint)
-        else getString(R.string.nat64_country_failed)
-
-    /**
-     * Where WARP comes out. A WARP exit is assigned near the user and can geolocate to Iran --
-     * that is the truth, not a leak (see TunnelExitLocator) -- so the Cloudflare colo is shown
-     * beside it.
-     */
-    private fun applyCfWarpTrace(t: com.mlmvpn.core.warp.CfWarpEngine.Trace) {
-        currentCountryCode = t.loc?.takeIf { it.length == 2 }.orEmpty()
-        currentCountry = listOfNotNull(t.loc, t.colo?.let { "Cloudflare $it" }).joinToString(" · ")
-        t.ip?.let {
-            measuredExitIp = it
-            lastExitIp = it
-        }
-    }
-
-    private fun onCfWarpDied(code: Int) {
-        if (stopRequested.get() || !cfwarpMode) return
-        runOnWorker { restartCfWarpEngine("the WARP engine exited (code $code)", dead = false) }
-    }
-
-    /** A new network: prove the endpoint still carries from here, a few seconds after the switch. */
-    private fun onCfWarpNetworkChange() {
-        if (stopRequested.get() || !connected.get()) return
-        ladderScheduler.schedule({
-            runOnWorker {
-                if (!cfwarpMode || stopRequested.get() || cfwarpRestarting.get()) return@runOnWorker
-                if (com.mlmvpn.core.warp.CfWarpEngine.verify(9_000)?.warpOn != true) {
-                    restartCfWarpEngine("the network changed", dead = true)
-                }
-            }
-        }, 3, TimeUnit.SECONDS)
-    }
-
-    /**
-     * A new engine behind the same TUN and the same tun2proxy -- they keep pointing at the same
-     * port, so nothing reaches the bare link while it comes back. [dead] also forgets the endpoint
-     * the engine would retry first, so the scan lands somewhere else.
-     */
-    private fun restartCfWarpEngine(reason: String, dead: Boolean) {
-        if (stopRequested.get() || !cfwarpMode) return
-        if (!cfwarpRestarting.compareAndSet(false, true)) return
-        try {
-            cfwarpDead++
-            if (cfwarpDead > CFWG_MAX_DEAD) {
-                ConnectionLog.record("WARP: $CFWG_MAX_DEAD replacements in a row — handing over to reconnect")
-                cfwarpRestarting.set(false)
-                onTunnelLost(reason)
-                return
-            }
-            ConnectionLog.record("WARP: $reason — ${if (dead) "finding another endpoint" else "restarting"} (the TUN stays up)")
-            sendStatus(STATUS_CONNECTING, getString(R.string.cfwarp_status_replacing))
-            if (dead) {
-                com.mlmvpn.core.warp.CfWarpEngine.dropLastEndpoint(this)
-                com.mlmvpn.core.warp.Nat64Exits.reportOutcome(this, com.mlmvpn.core.warp.CfWarpEngine.currentPeer, ok = false)
-            }
-            val trace = startCfWarpVerified()
-            if (stopRequested.get()) return
-            if (trace == null) error(cfWarpNoEndpointMessage())
-            applyCfWarpTrace(trace)
-            sendStatus(STATUS_CONNECTED)
-        } catch (e: Exception) {
-            ConnectionLog.record("WARP restart failed: ${e.message}")
-            if (!stopRequested.get() && cfwarpMode) {
-                ladderScheduler.schedule({ runOnWorker { restartCfWarpEngine("retry after: ${e.message}", dead = true) } }, 5, TimeUnit.SECONDS)
-            }
-        } finally {
-            cfwarpRestarting.set(false)
-        }
-    }
-
-    /** Traffic once a second; the real-request proof every [CFWG_VERIFY_EVERY_S]. */
-    private fun startCfWarpMonitor() {
-        stopCfWarpMonitor()
-        var tick = 0L
-        var healthySince = SystemClock.elapsedRealtime()
-        cfwarpMonitorTask = ladderScheduler.scheduleAtFixedRate({
-            try {
-                if (stopRequested.get() || !cfwarpMode || cfwarpRestarting.get()) return@scheduleAtFixedRate
-                tick++
-                val uid = android.os.Process.myUid()
-                val rx = android.net.TrafficStats.getUidRxBytes(uid).coerceAtLeast(0L) - cfwarpRxBase
-                val tx = android.net.TrafficStats.getUidTxBytes(uid).coerceAtLeast(0L) - cfwarpTxBase
-                updateTrafficNotification(tx.coerceAtLeast(0L), rx.coerceAtLeast(0L))
-                if (SystemClock.elapsedRealtime() - healthySince > 180_000) cfwarpDead = 0
-                if (tick % CFWG_VERIFY_EVERY_S != 0L) return@scheduleAtFixedRate
-                // The proof is a real request through the tunnel, and each one switches the radio
-                // on. With the screen off one in four is still made -- a dead endpoint is replaced
-                // within a few minutes, so messages keep arriving -- instead of one every 45 s.
-                if (!com.mlmvpn.scanner.utils.ScreenState.on.value &&
-                    (tick / CFWG_VERIFY_EVERY_S) % CFWG_VERIFY_SCREEN_OFF_EVERY != 0L
-                ) return@scheduleAtFixedRate
-                runOnWorker {
-                    if (!cfwarpMode || stopRequested.get() || cfwarpRestarting.get()) return@runOnWorker
-                    val ok = com.mlmvpn.core.warp.CfWarpEngine.verify(9_000)?.warpOn == true ||
-                        com.mlmvpn.core.warp.CfWarpEngine.verify(9_000)?.warpOn == true
-                    if (ok) {
-                        if (lastStatus != STATUS_CONNECTED) sendStatus(STATUS_CONNECTED)
-                    } else {
-                        healthySince = SystemClock.elapsedRealtime()
-                        restartCfWarpEngine("the endpoint stopped carrying traffic", dead = true)
-                    }
-                }
-            } catch (_: Exception) {
-            }
-        }, 1L, 1L, TimeUnit.SECONDS)
-    }
-
-    private fun stopCfWarpMonitor() {
-        cfwarpMonitorTask?.cancel(false)
-        cfwarpMonitorTask = null
     }
 
     // ------------------------------------------------------ «URnetwork»
@@ -4066,9 +3790,9 @@ class TunnelVpnService : VpnService(), TunnelEngine.CoreCallback, PsiphonTunnel.
                     sendStatus(STATUS_CONNECTED)
                 }
                 if (tick % URNETWORK_VERIFY_EVERY_S != 0L) return@scheduleAtFixedRate
-                // With the screen off one in four is still made, as for «وارپ»: each switches the radio on.
+                // With the screen off one in four is still made; each switches the radio on.
                 if (!com.mlmvpn.scanner.utils.ScreenState.on.value &&
-                    (tick / URNETWORK_VERIFY_EVERY_S) % CFWG_VERIFY_SCREEN_OFF_EVERY != 0L
+                    (tick / URNETWORK_VERIFY_EVERY_S) % SCREEN_OFF_VERIFY_EVERY != 0L
                 ) return@scheduleAtFixedRate
                 runOnWorker {
                     if (!urnetworkMode || stopRequested.get() || urnetworkRestarting.get()) return@runOnWorker
@@ -4405,9 +4129,9 @@ class TunnelVpnService : VpnService(), TunnelEngine.CoreCallback, PsiphonTunnel.
                 // The exit is reported once the core's auto-select picks a server; it can come late.
                 if (currentCountryCode.isBlank()) applyLanternExit()
                 if (tick % LANTERN_VERIFY_EVERY_S != 0L) return@scheduleAtFixedRate
-                // With the screen off one in four is still made, as for «وارپ»: each switches the radio on.
+                // With the screen off one in four is still made; each switches the radio on.
                 if (!com.mlmvpn.scanner.utils.ScreenState.on.value &&
-                    (tick / LANTERN_VERIFY_EVERY_S) % CFWG_VERIFY_SCREEN_OFF_EVERY != 0L
+                    (tick / LANTERN_VERIFY_EVERY_S) % SCREEN_OFF_VERIFY_EVERY != 0L
                 ) return@scheduleAtFixedRate
                 runOnWorker {
                     if (!lanternMode || stopRequested.get() || lanternRestarting.get()) return@runOnWorker
@@ -4823,11 +4547,6 @@ class TunnelVpnService : VpnService(), TunnelEngine.CoreCallback, PsiphonTunnel.
             // case where that is not happening.
             if (lanternRestarting.get()) return null
             if (!com.mlmvpn.core.lantern.LanternEngine.isAlive) return "the Lantern core is not running"
-            return null
-        }
-        if (cfwarpMode) {
-            if (cfwarpRestarting.get()) return null
-            if (!com.mlmvpn.core.warp.CfWarpEngine.isAlive) return "the WARP engine is not running"
             return null
         }
         if (gephMode) {
@@ -5550,12 +5269,6 @@ class TunnelVpnService : VpnService(), TunnelEngine.CoreCallback, PsiphonTunnel.
             return
         }
 
-        // «وارپ»: its own engine and identity, none of the tunnel core's. Exact match again.
-        if (currentProtocol == CFWG_PROTOCOL) {
-            startCfWarpTunnel()
-            return
-        }
-
         // «لنترن»: Lantern 10's own core as a local proxy behind tun2proxy. Exact match: "LANTERN"
         // contains none of the other names, nor they it.
         if (currentProtocol == LANTERN_PROTOCOL) {
@@ -6011,31 +5724,6 @@ class TunnelVpnService : VpnService(), TunnelEngine.CoreCallback, PsiphonTunnel.
             lanternMode = false
             lanternNetwork = null
             lanternDns = emptyList()
-            activeSocksPort = 0
-            vpnModeActive.set(false)
-            tun?.close()
-            tun = null
-            connected.set(false)
-            if (notify) sendStatus(STATUS_DISCONNECTED)
-            if (teardownService) {
-                leaveForeground()
-            }
-            return
-        }
-
-        if (cfwarpMode) {
-            stopCfWarpMonitor()
-            stopIpv4ExitSession()
-            com.mlmvpn.core.warp.WarpVia.unregister(WARP_VIA_CFWARP)
-            com.mlmvpn.core.warp.CfWarpEngine.onUnexpectedExit = null
-            // Routing first, so nothing more enters a tunnel whose engine is about to go.
-            com.mlmvpn.scanner.tun.Tun2proxyClient.stop(this)
-            if (cfwarpFront) {
-                SocksFront.stop()
-                cfwarpFront = false
-            }
-            com.mlmvpn.core.warp.CfWarpEngine.stop()
-            cfwarpMode = false
             activeSocksPort = 0
             vpnModeActive.set(false)
             tun?.close()
@@ -6756,7 +6444,6 @@ class TunnelVpnService : VpnService(), TunnelEngine.CoreCallback, PsiphonTunnel.
      */
     private fun prettyProtocol(): String = when {
         currentProtocol == GEPH_PROTOCOL -> "Geph"
-        currentProtocol == CFWG_PROTOCOL -> "WARP"
         currentProtocol == LANTERN_PROTOCOL -> "Lantern"
         currentProtocol == URNETWORK_PROTOCOL -> "URnetwork"
         currentProtocol.contains(CHAIN_PROTOCOL_MARKER) -> "Psiphon over WARP"
