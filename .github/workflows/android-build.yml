@@ -1,4 +1,4 @@
-name: Android debug build
+name: Android debug build (feature branch)
 
 on:
   push:
