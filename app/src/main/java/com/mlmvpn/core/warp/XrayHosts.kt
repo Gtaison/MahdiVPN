@@ -26,7 +26,7 @@ import java.util.concurrent.atomic.AtomicLong
  * channel"), on some public Shadowsocks and WireGuard servers, after its tun descriptor is closed
  * under it. In the main process each one closed the whole app: the top crash of 1.2.41 ("native
  * crash SIGABRT in libgojni.so", well over a thousand reports) came from the VPN's own core on
- * Outline, Windscribe and Amnezia connects, MAE's probe core on opening MAE, and the test cores of
+ * Outline, Windscribe and Amnezia connects and the test cores of
  * FLUX, the node list and Quick Connect. Leftover goroutines of a stopped core also kept the
  * process busy after the app went to the background, and the system killed it for CPU use.
  *
@@ -62,8 +62,6 @@ object XrayHosts {
 
     /** The VPN's own core (MyVpnService). */
     val TUNNEL by lazy { Host(XrayTunnelHostService::class.java, "XrayTunnelHost") }
-    /** MAE's probe core: a background engine, kept apart from tests that may take their process down. */
-    val MAE by lazy { Host(XrayMaeHostService::class.java, "XrayMaeHost") }
     /** Every test core: FLUX, the node list, the WireGuard scanner, Windscribe's tests, country and platform checks. */
     val TEST by lazy { Host(XrayTestHostService::class.java, "XrayTestHost") }
 
@@ -270,9 +268,6 @@ open class XrayCoreHostService : Service() {
 
 /** The VPN's core (`:xtun`). */
 class XrayTunnelHostService : XrayCoreHostService()
-
-/** MAE's probe core (`:maeprobe`). */
-class XrayMaeHostService : XrayCoreHostService()
 
 /** The app's test cores (`:xtest`). */
 class XrayTestHostService : XrayCoreHostService()
