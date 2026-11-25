@@ -154,7 +154,6 @@ object HomeDestinations {
         HomeApp("scout",             R.string.scout_title,        Icons.Default.Radar,         Blue, imageRes = R.drawable.ic_app_scout),
         // «MLM CHAT»: phone-to-phone chat with no server, on the Telegram Android fork (mlm-chat/docs,
         // T4/T23). It is not a page here: the tile opens the chat's own screen in its :chat process.
-        HomeApp(com.mlmvpn.scanner.chat.MlmChat.TILE_ID, R.string.home_mlmchat, Icons.Default.Forum, Blue, imageRes = R.drawable.gereh_logo),
         HomeApp("masque",            R.string.home_masque,        Icons.Default.Bolt,          Blue, imageRes = R.drawable.ic_app_masque),
         HomeApp("wireguard",         R.string.home_wireguard,     Icons.Default.VpnKey,        Green, imageRes = R.drawable.ic_app_wireguard),
         HomeApp("warp_on_warp",      R.string.home_warp_on_warp,  Icons.Default.Layers,        Orange, glyphRes = R.drawable.ic_glyph_layers),
