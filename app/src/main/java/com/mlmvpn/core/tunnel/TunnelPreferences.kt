@@ -195,31 +195,6 @@ class TunnelPreferences(context: Context) {
         get() = read(TOR_EXIT_REGION, "auto")
         set(value) = write(TOR_EXIT_REGION, value)
 
-    /**
-     * Whether Tor may run inside a WARP tunnel when it cannot bootstrap alone.
-     *
-     * Separate from the Psiphon chain setting on purpose: the two inner tunnels
-     * have genuinely different needs from an outer leg, so one shared switch
-     * would be wrong in both directions.
-     */
-    var torChainArmed: Boolean
-        get() = prefs.getBoolean(TOR_CHAIN_ARMED, true)
-        set(value) = prefs.edit().putBoolean(TOR_CHAIN_ARMED, value).apply()
-
-    /**
-     * Tor's own pin for the outer leg, separate from [chainOuterMode].
-     *
-     * [CoreConfig.chainOuterCandidates] has always read this key, and nothing ever wrote it --
-     * so Tor's outer leg silently walked the whole ladder however the Psiphon row was set, and
-     * the Psiphon row appeared to control something it did not. The two inner tunnels want
-     * genuinely different things from an outer leg (Tor only needs a reachable SOCKS proxy;
-     * Psiphon runs its own protocol ladder inside and is far more sensitive to its latency),
-     * which is exactly why the core kept them apart.
-     */
-    var chainOuterModeTor: String
-        get() = read(CoreConfig.CHAIN_OUTER_MODE_TOR_PREF, "auto")
-        set(value) = write(CoreConfig.CHAIN_OUTER_MODE_TOR_PREF, value)
-
     // --- the rest of what the core reads -------------------------------------
     //
     // Everything below is a field [CoreConfig.json] already sends on every connect, for which
@@ -354,7 +329,6 @@ class TunnelPreferences(context: Context) {
         const val AUTO_RECONNECT = "auto_reconnect"
         const val TOR_MODE = "tor_mode"
         const val TOR_EXIT_REGION = "tor_exit_region"
-        const val TOR_CHAIN_ARMED = "tor_chain_armed"
 
         // Read by CoreConfig.json and, until now, written by nothing.
         const val LOG_LEVEL = "log_level"
