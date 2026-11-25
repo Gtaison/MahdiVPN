@@ -57,36 +57,11 @@ object TorManager {
     /** Preference key holding the user's choice of [TorMode]. */
     const val MODE_PREF = "tor_mode"
 
-    /**
-     * Whether Tor should ride inside a WARP tunnel (Tor-over-WARP).
-     *
-     * A separate key from the Psiphon chain's `chain_armed`, deliberately. They
-     * are two independent features that happen to share a mechanism, and one
-     * switch for both would mean arming the chain for Psiphon silently changed
-     * how Tor connects — a setting the user never touched altering a transport
-     * they did not select.
-     *
-     * Defaults ON for the same reason the Psiphon chain does: on the carriers
-     * this app exists for, Tor's own dials are what get blocked, and the WARP
-     * rung that carries them is remembered per device so the search is paid once.
-     */
+    // Retained as a compatibility preference key; Tor-over-WARP is disabled.
     const val CHAIN_ARMED_PREF = "tor_chain_armed"
-    const val CHAIN_ARMED_DEFAULT = true
+    const val CHAIN_ARMED_DEFAULT = false
 
-    /**
-     * Which rung of the AUTO ladder last carried a working circuit.
-     *
-     * Same idea as [CoreConfig.PLAIN_WORKING_TRANSPORT_PREF] for Psiphon: a
-     * device on a carrier that blocks direct Tor pays the 30-second direct
-     * timeout once, not on every connect.
-     *
-     * Two keys, one per shape of the session — see [winnerPref]. A rung that
-     * works from inside WARP is not evidence that it works on the bare carrier,
-     * or the other way round: the whole reason for chaining is that the carrier
-     * blocks what WARP carries fine. Sharing one key would have each mode
-     * overwrite the other's memory and send the next connect to a rung with no
-     * evidence behind it at all.
-     */
+    /** Last successful AUTO transport, used to prioritize the next direct attempt. */
     private const val WINNER_PREF = "tor_winning_mode"
 
     /**
@@ -200,44 +175,10 @@ object TorManager {
         Rung(TorMode.SNOWFLAKE, BRIDGE_TIMEOUT_S),
     )
 
-    /**
-     * The modes that may run inside WARP, in ladder order: Direct, then Meek.
-     *
-     * Measured on the VPS through a real SOCKS5 proxy, tor 0.4.6.10 / lyrebird
-     * 0.0.13, with the app's own bridge lines:
-     *
-     * ```
-     *   Direct    via proxy         100% in 12-15s, then 42s with the country picker on
-     *   meek_lite via TOR_PT_PROXY  100% in 36s, 75 CDN dials all crossing the proxy
-     *   obfs4     via proxy          10% / 85% — and 85% vs 10% flipped between two
-     *                                runs of the SAME bridge with no proxy at all
-     *   Snowflake                    never tested through a proxy
-     * ```
-     *
-     * So obfs4 and Snowflake are excluded, and the reason is the absence of
-     * evidence rather than evidence of harm. obfs4 was never shown to be hurt by
-     * the proxy — it was never shown to work reliably *at all* on these bridges,
-     * which is worse: chaining it would put an unpredictable rung inside a
-     * tunnel that costs a second handshake, and any failure would then be
-     * unattributable between the two layers. Snowflake has its own broker and
-     * WebRTC dials that a SOCKS5 CONNECT cannot carry.
-     *
-     * Both remain fully available **unchained** — they are still rungs 3 and 4 of
-     * [ladder], and pinning them in settings still works. This list only decides
-     * what a chained session is allowed to try.
-     */
     /** Tor-over-WARP is disabled in this fork. */
     fun isChainable(mode: TorMode): Boolean = false
 
-    /**
-     * Whether the next Tor connect should ride inside WARP.
-     *
-     * Reads the switch, but also refuses for the two transports that cannot be
-     * chained: with obfs4 or Snowflake pinned there is nothing the chain could
-     * carry, so arming it would either be ignored silently or break the pin. The
-     * UI mirrors this rule so the switch is never lit for a mode it cannot apply
-     * to.
-     */
+    /** Compatibility shim: Tor never starts an outer WARP leg. */
     fun chainArmed(context: Context): Boolean = false
 
     @Volatile
@@ -399,11 +340,6 @@ object TorManager {
         val torrc = File(dataDir, "torrc")
         val transport = transportFor(mode)
         val bridges = bridgeLinesFor(context, mode)
-        // No transport means no PT process, which is the only case where the
-        // proxy belongs in the torrc — see the note above. Vanilla bridges have
-        // no PT either, so a chained vanilla rung dials them through the proxy.
-        val proxyGoesInTorrc = transport == null
-
         val text = buildString {
             appendLine("SocksPort 127.0.0.1:$TOR_SOCKS_PORT")
             appendLine("DNSPort 127.0.0.1:$TOR_DNS_PORT")
@@ -515,13 +451,6 @@ object TorManager {
      *    listener, and the next connect fails to bind.
      *  - `TOR_PT_STATE_LOCATION` must end in a separator; lyrebird writes its
      *    obfs4 bridge state there.
-     *  - `TOR_PT_PROXY` is how a bridge rung joins the WARP chain. It is the PT,
-     *    not tor, that makes the real outbound connection when `UseBridges 1` is
-     *    set, so this is the only place a chained bridge rung can be told about
-     *    the outer tunnel — and putting `Socks5Proxy` in the torrc instead makes
-     *    tor refuse to start (see [writeTorrc]). Measured: with the variable set,
-     *    all 75 of meek's CDN dials crossed the proxy and tor bootstrapped in
-     *    36s; without it, 0 crossed.
      *
      * Returns true only when the transport actually registered a SOCKS port. A
      * live process that registered nothing is a failure — it would leave Tor
@@ -922,9 +851,7 @@ object TorManager {
      * On success [FRONT_SOCKS_PORT] is a live SOCKS5 server for tun2socks to
      * dial, with DNS already wired to Tor's DNSPort.
      *
-     * When [useUpstreamProxy] has been given a proxy, this is a chained session:
-     * the ladder shrinks to [chainedLadder] (Direct, then Meek) and the winner is
-     * remembered under its own key. Nothing else about the sequence changes.
+     * AUTO tries the complete direct transport ladder, remembering the last successful rung.
      */
     fun start(context: Context): Boolean {
         stopping.set(false)
