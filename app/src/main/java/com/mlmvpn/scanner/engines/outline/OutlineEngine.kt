@@ -333,7 +333,7 @@ object OutlineEngine {
     fun stopTest() { testJob?.cancel() }
 
     /**
-     * One test of [servers], in two passes, every server counted the moment its pass decides it.
+     * One test of [servers], using the direct-only probe path, every server counted as soon as its result arrives.
      *
      *  1. Straight from this line: a TCP knock on every server, many at once, and each one that
      *     answers goes into a real request through it in the `:xprobe` process (OutlineProbe) right
