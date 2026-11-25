@@ -1,21 +1,20 @@
 cmake_minimum_required(VERSION 3.22.1)
 project(tunneljni CXX C)
 
-# The tunnel core is built separately by native/build-engine.ps1 and dropped
-# into jniLibs; here it is only referenced so the shim can link against it.
-# IMPORTED means "already built, do not try to compile it".
-add_library(tunnelcore SHARED IMPORTED)
-set_target_properties(tunnelcore PROPERTIES
-    IMPORTED_LOCATION
-    ${CMAKE_CURRENT_LIST_DIR}/../jniLibs/${ANDROID_ABI}/libtunnelcore.so)
-
-add_library(tunneljni SHARED tunnel_jni.cpp)
-
-# log is not used yet but every NDK target links it in practice; keeping it here
-# means adding a __android_log_print while debugging needs no build change.
-find_library(log-lib log)
-
-target_link_libraries(tunneljni tunnelcore ${log-lib})
+# The Aether tunnel core is optional at build time: it is distributed through the
+# signed engine channel, not checked into this repository. Build the JNI shim only
+# when that exact ABI's core has been supplied in jniLibs.
+set(TUNNEL_CORE ${CMAKE_CURRENT_LIST_DIR}/../jniLibs/${ANDROID_ABI}/libtunnelcore.so)
+if(EXISTS ${TUNNEL_CORE})
+    add_library(tunnelcore SHARED IMPORTED)
+    set_target_properties(tunnelcore PROPERTIES IMPORTED_LOCATION ${TUNNEL_CORE})
+    add_library(tunneljni SHARED tunnel_jni.cpp)
+    find_library(log-lib log)
+    target_link_libraries(tunneljni tunnelcore ${log-lib})
+    target_link_options(tunneljni PRIVATE
+        "-Wl,-z,max-page-size=16384"
+        "-Wl,-z,common-page-size=16384")
+endif()
 
 # Android 15 can run with 16 KB memory pages. A shared library whose LOAD
 # segments are aligned to the older 4 KB cannot be mapped on such a device, so
