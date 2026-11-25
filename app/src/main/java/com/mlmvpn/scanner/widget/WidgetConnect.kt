@@ -315,7 +315,7 @@ object WidgetConnect {
      * The country of a transport, written where its own screen writes it -- these are the method's
      * settings, so the app's page shows the same choice afterwards.
      *
-     * WARP, MASQUE and WireGuard leave the country through a NAT64 gateway on a network with IPv6,
+     * MASQUE and WireGuard leave the country through a NAT64 gateway on a network with IPv6,
      * or through a measured free proxy on one without. Neither is invented here: NAT64 only for a
      * country it has a gateway for, the proxy only for a country whose pool the user already
      * measured on the method's page. Otherwise nothing is changed and the method leaves where it
@@ -327,7 +327,7 @@ object WidgetConnect {
                 Transport.PSIPHON -> if (cc in com.mlmvpn.core.tunnel.PsiphonRegions.options(app)) TunnelPreferences(app).egressRegion = cc
                 Transport.TOR -> if (cc in com.mlmvpn.core.tunnel.TorRegions.options()) TunnelPreferences(app).torExitRegion = cc
                 Transport.GEPH -> com.mlmvpn.core.geph.GephSettings.setExit(app, com.mlmvpn.core.geph.GephExitChoice(cc, null))
-                Transport.MASQUE, Transport.WIREGUARD, Transport.CFWG -> {
+                Transport.MASQUE, Transport.WIREGUARD -> {
                     val nat64 = com.mlmvpn.core.warp.Nat64Exits
                     if (cc in nat64.countries(app) && com.mlmvpn.scanner.data.CfFamily.hasIpv6Route()) {
                         nat64.setSelection(app, cc)
