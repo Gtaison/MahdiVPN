@@ -161,7 +161,6 @@ object OutlineEngine {
                     _connect.value = OutlineConnect.Idle
                     _speed.value = SpeedState.None
                     wantConnected = false
-                    launch(Dispatchers.IO) { stopLeg() }
                 }
             }
         }
@@ -477,13 +476,7 @@ object OutlineEngine {
         }
         if (server == null) { _connect.value = OutlineConnect.Failed(null, OutlineConnect.Reason.NO_SERVERS); return }
         val maxAttempts = if (store.current.prefs.autoFallback) 3 else 1
-        var connected = false
-        try {
-            connected = connectServers(server, maxAttempts, tried, net, ::next)
-        } finally {
-            // The leg stays only under a tunnel that rides it.
-            if (!(connected && legInUse && wantConnected)) withContext(NonCancellable + Dispatchers.IO) { stopLeg() }
-        }
+        connectServers(server, maxAttempts, tried, net, ::next)
     }
 
     /** True when one of them connected and carried a real request. */
