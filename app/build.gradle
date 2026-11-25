@@ -485,7 +485,8 @@ tasks.register('testWorker') {
     def script = file('../scripts/test-studio-worker.mjs')
     inputs.dir(srcDir)
     inputs.file(asset)
-    inputs.file(script).optional()
+    // This integration harness is intentionally optional in source snapshots that omit it.
+    if (script.exists()) inputs.file(script)
 
     doLast {
         if (!script.exists()) {
