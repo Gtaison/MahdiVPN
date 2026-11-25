@@ -59,7 +59,7 @@ data class OutlineStat(
     val fails: Int = 0,
     /** Bits per second of the last speed sample, when one was taken. */
     val speedBps: Long? = null,
-    /** It worked here only from inside Cloudflare WARP ([OutlineCf]): connect goes that way. */
+    /** Legacy cache field from older releases; retained for JSON compatibility, ignored by this fork. */
     val viaCf: Boolean = false,
 ) {
     val tested: Boolean get() = lastTestAt > 0
@@ -97,31 +97,16 @@ sealed class OutlineConnect {
     data class Connected(val serverId: String, val country: String?, val delayMs: Long?, val since: Long, val exitIp: String? = null) : OutlineConnect()
     data class Failed(val serverId: String?, val reason: Reason) : OutlineConnect()
 
-    /** [WARP]: the app's own WARP engine is coming up for a connect from inside WARP (up to a minute). */
-    enum class Step { PREPARING, WARP, STARTING, VERIFYING }
+    enum class Step { PREPARING, STARTING, VERIFYING }
     enum class Reason { OFFLINE, NO_SERVERS, NO_DATA, BAD_CONFIG, VPN_REFUSED }
 }
 
-/**
- * A test in two passes, each counted on its own so the bar always moves one server at a time:
- * [Phase.DIRECT] decides every server straight from this line; [Phase.WARP] tries the ones that
- * gave nothing straight again from inside Cloudflare WARP. [done] and [total] belong to the pass
- * that is running; [alive] adds up both.
- */
+/** Progress for the direct-only Outline server test. */
 data class OutlineTestProgress(
     val running: Boolean = false,
     val done: Int = 0,
     val total: Int = 0,
     val alive: Int = 0,
-    val phase: Phase = Phase.DIRECT,
-    /** During [Phase.DIRECT]: servers that gave nothing straight and wait for the WARP pass. */
-    val warpQueued: Int = 0,
-    /** When the pass that is running began, for the elapsed time beside the bar. */
+    /** When the test began, for the elapsed time beside the bar. */
     val phaseStartedAt: Long = 0,
-    /** The WARP pass is waiting for the app's WARP engine to come up (up to a minute on a filtered line). */
-    val warpStarting: Boolean = false,
-    /** No way into WARP on this line: the servers that needed it stay as the first pass found them. */
-    val warpUnreachable: Boolean = false,
-) {
-    enum class Phase { DIRECT, WARP }
-}
+)
