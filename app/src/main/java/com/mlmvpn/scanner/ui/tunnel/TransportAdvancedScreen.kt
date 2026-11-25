@@ -521,8 +521,6 @@ fun TransportAdvancedScreen(transport: Transport, onBack: () -> Unit) {
                 // Geph has its own settings page (GephSettingsScreen); TransportHost sends its
                 // "advanced" row there, so this page never renders for it.
                 Transport.GEPH -> Unit
-                // «وارپ» likewise: CfWarpSettingsScreen.
-                Transport.CFWG -> Unit
                 // «لنترن»'s own choices (routing, the server list) are on its screen; only the shared
                 // sections below apply here.
                 Transport.LANTERN -> Unit
