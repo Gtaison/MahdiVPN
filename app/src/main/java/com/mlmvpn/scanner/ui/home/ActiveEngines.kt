@@ -179,7 +179,6 @@ object ActiveEngines {
             id.startsWith("default_mlmvpn_") -> "iran"
             id == com.mlmvpn.scanner.mitm.MitmProfile.NODE_ID -> "fronting"
             id == "GST_EMERGENCY" -> "emergency_2"
-            id == com.mlmvpn.scanner.engines.mae.MaeEngine.NODE_ID -> "mae"
             id == com.mlmvpn.scanner.engines.flux.FluxEngine.NODE_ID -> "flux"
             id == com.mlmvpn.scanner.engines.fenix.FenixEngine.NODE_ID -> "fenix"
             id == com.mlmvpn.scanner.engines.windscribe.WindscribeEngine.NODE_ID -> "windscribe"
