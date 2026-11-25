@@ -5121,9 +5121,6 @@ After that it builds the combinations itself, measures every one with a real req
     <string name="fenix_step_tunnel">Building the tunnel…</string>
     <string name="fenix_step_check">Testing the connection…</string>
     <string name="fenix_ms">%1$s ms</string>
-    <string name="fenix_mae_section">MAE</string>
-    <string name="fenix_mae_toggle">Use in MAE</string>
-    <string name="fenix_mae_footer">MAE can use FENIX as a foreign exit too, and tests it for each app separately.</string>
     <string name="fenix_fastest">Fastest country</string>
     <string name="fenix_fastest_detail">Automatic, by ping from your own connection</string>
     <string name="fenix_recommended">Mozilla\'s pick</string>
@@ -5546,7 +5543,6 @@ After that it builds the combinations itself, measures every one with a real req
     <!-- Home-screen widgets and Widget Studio. -->
     <string name="home_widgetstudio">Widget Studio</string>
     <string name="widget_method_desc">One tap to connect or disconnect</string>
-    <string name="widget_gereh_desc">New Gereh messages, one tap away</string>
     <string name="widget_studio_desc">A design of your own, made in Widget Studio</string>
     <string name="widget_studio_small">Widget Studio · Small</string>
     <string name="widget_studio_medium">Widget Studio · Medium</string>
