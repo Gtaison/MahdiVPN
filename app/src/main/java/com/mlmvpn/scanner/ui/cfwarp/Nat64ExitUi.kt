@@ -69,7 +69,7 @@ const val NAT64_EXIT_PAGE = "nat64_exit"
 
 /** The transports whose exit country a NAT64 gateway chooses: «وارپ», MASQUE and WireGuard. */
 fun Transport.hasNat64Exit(): Boolean =
-    this == Transport.CFWG || this == Transport.MASQUE || this == Transport.WIREGUARD
+    this == Transport.MASQUE || this == Transport.WIREGUARD
 
 /**
  * The transports with an exit country at all: the NAT64 three, and WARP-in-WARP too -- a free proxy
