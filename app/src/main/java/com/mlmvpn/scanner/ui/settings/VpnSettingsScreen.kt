@@ -154,10 +154,15 @@ private const val V_MTU = "mtu"
 private const val MTU_ROUTE = "mtu:"
 private const val MTU_GLOBAL = "global"
 
+/** User-configurable MTU routes. Removed engines remain in the enum only to read old settings. */
+private val mtuMethods = com.mlmvpn.scanner.utils.NetworkSettings.Method.entries.filterNot {
+    it == com.mlmvpn.scanner.utils.NetworkSettings.Method.CFWARP ||
+        it == com.mlmvpn.scanner.utils.NetworkSettings.Method.MAE
+}
+
 /** Every route [MTU_ROUTE] can produce, so the `when` can match on membership. */
 private val mtuRoutes: Set<String> =
-    com.mlmvpn.scanner.utils.NetworkSettings.Method.entries.map { MTU_ROUTE + it.id }.toSet() +
-        (MTU_ROUTE + MTU_GLOBAL)
+    mtuMethods.map { MTU_ROUTE + it.id }.toSet() + (MTU_ROUTE + MTU_GLOBAL)
 
 /** The name the user knows a method by -- the same one on its home icon. */
 @Composable
@@ -168,7 +173,7 @@ private fun mtuMethodLabel(method: com.mlmvpn.scanner.utils.NetworkSettings.Meth
         com.mlmvpn.scanner.utils.NetworkSettings.Method.WARP_ON_WARP -> stringResource(R.string.home_warp_on_warp)
         com.mlmvpn.scanner.utils.NetworkSettings.Method.PSIPHON -> stringResource(R.string.home_psiphon)
         com.mlmvpn.scanner.utils.NetworkSettings.Method.TOR -> stringResource(R.string.home_tor)
-        com.mlmvpn.scanner.utils.NetworkSettings.Method.CFWARP -> stringResource(R.string.home_warp)
+        com.mlmvpn.scanner.utils.NetworkSettings.Method.CFWARP -> "WARP (legacy)"
         com.mlmvpn.scanner.utils.NetworkSettings.Method.QUICK_CONNECT -> stringResource(R.string.home_quick)
         com.mlmvpn.scanner.utils.NetworkSettings.Method.GATEWAY -> stringResource(R.string.home_gateway)
         com.mlmvpn.scanner.utils.NetworkSettings.Method.SNI -> stringResource(R.string.home_emergency_3)
@@ -179,7 +184,7 @@ private fun mtuMethodLabel(method: com.mlmvpn.scanner.utils.NetworkSettings.Meth
         com.mlmvpn.scanner.utils.NetworkSettings.Method.OUTLINE -> "Outline"
         com.mlmvpn.scanner.utils.NetworkSettings.Method.FLUX -> "FLUX"
         com.mlmvpn.scanner.utils.NetworkSettings.Method.FENIX -> "FENIX"
-        com.mlmvpn.scanner.utils.NetworkSettings.Method.MAE -> "MAE"
+        com.mlmvpn.scanner.utils.NetworkSettings.Method.MAE -> "MAE (legacy)"
         com.mlmvpn.scanner.utils.NetworkSettings.Method.GITHUB -> stringResource(R.string.home_github)
         com.mlmvpn.scanner.utils.NetworkSettings.Method.GST -> stringResource(R.string.home_emergency_2)
         com.mlmvpn.scanner.utils.NetworkSettings.Method.ANTI_SANCTION -> stringResource(R.string.home_antisanction)
@@ -221,7 +226,7 @@ fun VpnSettingsScreen(onDismiss: () -> Unit) {
     // Declared above pop(), because pop() is what commits whichever one is open.
     val mtuText = remember {
         mutableStateMapOf<String, String>().apply {
-            com.mlmvpn.scanner.utils.NetworkSettings.Method.entries.forEach { m ->
+            mtuMethods.forEach { m ->
                 put(m.id, com.mlmvpn.scanner.utils.NetworkSettings.methodMtu(context, m)
                     .let { if (it > 0) it.toString() else "" })
             }
@@ -339,7 +344,7 @@ fun VpnSettingsScreen(onDismiss: () -> Unit) {
             Spacer(Modifier.height(14.dp))
             SettingsSectionHeader(stringResource(R.string.vpn_mtu_per_method))
             SettingsGroup {
-                com.mlmvpn.scanner.utils.NetworkSettings.Method.entries.forEachIndexed { i, m ->
+                mtuMethods.forEachIndexed { i, m ->
                     if (i > 0) Separator()
                     // Resolved before the row: stringResource cannot be called from
                     // inside ifEmpty's lambda, which is not composable.
