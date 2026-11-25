@@ -71,7 +71,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mlmvpn.core.tunnel.ConnectionLog
 import com.mlmvpn.core.tunnel.IpFormatter
 import com.mlmvpn.core.tunnel.TunnelPreferences
-import com.mlmvpn.scanner.ui.cfwarp.CfWarpPanel
 import com.mlmvpn.scanner.ui.lantern.LanternPanel
 import com.mlmvpn.scanner.ui.urnetwork.UrnetworkLiveCard
 import com.mlmvpn.scanner.ui.urnetwork.UrnetworkOnboarding
@@ -290,7 +289,7 @@ fun TransportScreen(
 
         // The identity could not be made: offer the way around it here, not in Settings.
         if (ownsTunnel && stage == TunnelStage.FAILED &&
-            (transport.usesWarpIdentity || transport == Transport.CFWG) &&
+            transport.usesWarpIdentity &&
             com.mlmvpn.core.warp.WarpIdRelay.isBlocked(state.message)
         ) {
             Spacer(Modifier.height(14.dp))
@@ -418,8 +417,6 @@ fun TransportScreen(
             }
 
             Transport.GEPH -> GephPanel(onOpenPage)
-
-            Transport.CFWG -> CfWarpPanel()
 
             Transport.LANTERN -> LanternPanel()
 
