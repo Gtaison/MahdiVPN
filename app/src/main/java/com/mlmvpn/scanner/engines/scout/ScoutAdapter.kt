@@ -2,7 +2,6 @@ package com.mlmvpn.scanner.engines.scout
 
 import android.content.Context
 import android.net.Network
-import com.mlmvpn.scanner.engines.scout.adapters.AetherWarpAdapter
 import com.mlmvpn.scanner.engines.scout.adapters.AmneziaAdapter
 import com.mlmvpn.scanner.engines.scout.adapters.AntiSanctionAdapter
 import com.mlmvpn.scanner.engines.scout.adapters.LanternAdapter
@@ -16,7 +15,6 @@ import com.mlmvpn.scanner.engines.scout.adapters.GephAdapter
 import com.mlmvpn.scanner.engines.scout.adapters.GithubAdapter
 import com.mlmvpn.scanner.engines.scout.adapters.GoogleScriptAdapter
 import com.mlmvpn.scanner.engines.scout.adapters.IranConfigAdapter
-import com.mlmvpn.scanner.engines.scout.adapters.MaeAdapter
 import com.mlmvpn.scanner.engines.scout.adapters.MyConfigsAdapter
 import com.mlmvpn.scanner.engines.scout.adapters.NpvAdapter
 import com.mlmvpn.scanner.engines.scout.adapters.OpenVpnAdapter
@@ -163,7 +161,6 @@ object ScoutRegistry {
             // Exhaustive on purpose: a new transport does not compile until Scout knows it.
             when (t) {
                 Transport.MASQUE, Transport.WIREGUARD, Transport.GOOL -> TunnelCoreAdapter(t)
-                Transport.CFWG -> AetherWarpAdapter
                 Transport.PSIPHON -> PsiphonAdapter
                 Transport.TOR -> TorAdapter
                 Transport.GEPH -> GephAdapter
@@ -172,7 +169,7 @@ object ScoutRegistry {
             }
         } + listOf(
             QuickConnectAdapter, FluxAdapter, AmneziaAdapter, FreeConfigAdapter, VpnGateAdapter, OpenVpnAdapter,
-            CloudPanelsAdapter, MyConfigsAdapter, MaeAdapter, FenixAdapter, ProtonAdapter, WindscribeAdapter, OutlineAdapter, NpvAdapter,
+            CloudPanelsAdapter, MyConfigsAdapter, FenixAdapter, ProtonAdapter, WindscribeAdapter, OutlineAdapter, NpvAdapter,
             GithubAdapter, GoogleScriptAdapter, AntiSanctionAdapter, IranConfigAdapter, SniAdapter, FrontingAdapter,
         ))
             // Not a method whose tile this build does not show (HomeDestinations.IN_PROGRESS in a release).
