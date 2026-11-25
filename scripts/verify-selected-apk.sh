@@ -45,6 +45,7 @@ need_dex_class 'Lcom/mlmvpn/scanner/ui/mami/MamiScreenKt;'
 # were absent from the earlier debug APK despite the Kotlin code calling them.
 need_file "lib/$ABI/libtun2proxy.so"
 need_file "lib/$ABI/libtun2socks.so"
+need_file "lib/$ABI/libmhrv_rs.so"
 
 # Core data used by the other selected products must not silently disappear either.
 need_file "assets/iran_profiles.json"
