@@ -35,8 +35,7 @@ import java.net.Socket
  * In `:xprobe` it ends only that process; the batch it was testing is tried again in halves.
  *
  * One core per batch: a SOCKS inbound per server, wired by tag to that server's Shadowsocks
- * outbound. With [carrier] every outbound dials through Cloudflare WARP's WireGuard inside the same
- * core ([carrier.outbounds]): one key, one session, for the whole batch.
+ * outbound.
  *
  * Batches are fed as a stream ([testStream]): a batch starts as soon as servers are waiting, so the
  * first delays arrive while the TCP knock is still going down the list. The whole list used to be
