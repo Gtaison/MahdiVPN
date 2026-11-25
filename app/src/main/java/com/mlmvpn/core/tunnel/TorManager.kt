@@ -323,18 +323,6 @@ object TorManager {
      *    anonymity and wrong here: one unreachable guard would make every
      *    connect attempt fail identically. Bridge modes do **not** get the
      *    redraw — see [keepTorState].
-     *  - **`Socks5Proxy` only without a transport.** Tor refuses to start when a
-     *    proxy and a **managed** `ClientTransportPlugin` are both configured:
-     *    measured on 0.4.6.10, `You have configured an external proxy with
-     *    another proxy type` then `Invalid client transport line`, exit before
-     *    the first bootstrap line. So on the direct rung the proxy goes in the
-     *    torrc, and on a bridge rung it must NOT — the PT is told instead, via
-     *    `TOR_PT_PROXY` in [startPt]. That is not a workaround but the correct
-     *    layering: with `UseBridges 1` tor's OR connections terminate at the PT's
-     *    local listener and the PT makes the real outbound dial, so the PT is the
-     *    only process that needs to know about the chain. Verified end to end —
-     *    meek reached 100% in 36s with all 75 of its CDN dials crossing the proxy,
-     *    against 0 crossings on the same run without the variable.
      */
     private fun writeTorrc(context: Context, dataDir: File, mode: TorMode): File {
         val torrc = File(dataDir, "torrc")
