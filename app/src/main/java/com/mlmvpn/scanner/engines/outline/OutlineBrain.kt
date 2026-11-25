@@ -17,7 +17,7 @@ object OutlineBrain {
     const val DROP_AFTER_FAILS = 4
     const val UNKNOWN = "??"
 
-    data class Result(val id: String, val ms: Long?, val speedBps: Long? = null, val viaCf: Boolean = false)
+    data class Result(val id: String, val ms: Long?, val speedBps: Long? = null, /** Legacy cache field; ignored by direct-only Outline. */ val viaCf: Boolean = false)
 
     fun group(s: OutlineServer): String = s.country ?: UNKNOWN
 
@@ -86,7 +86,7 @@ object OutlineBrain {
         for (r in results) {
             val old = m[r.id] ?: OutlineStat()
             m[r.id] = if (r.ms != null && r.ms >= 0) OutlineStat(r.ms, now, 0, r.speedBps ?: old.speedBps, r.viaCf)
-            else old.copy(lastMs = -1, lastTestAt = now, fails = old.fails + 1)
+            else old.copy(lastMs = -1, lastTestAt = now, fails = old.fails + 1, viaCf = false)
         }
         return state.copy(stats = state.stats + (net to m))
     }
