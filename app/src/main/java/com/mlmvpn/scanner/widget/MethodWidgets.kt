@@ -50,14 +50,12 @@ abstract class MethodWidgetProvider(private val method: String) : AppWidgetProvi
 class MasqueWidget : MethodWidgetProvider("masque")
 class WireguardWidget : MethodWidgetProvider("wireguard")
 class WarpOnWarpWidget : MethodWidgetProvider("warp_on_warp")
-class WarpWidget : MethodWidgetProvider("warp")
 class PsiphonWidget : MethodWidgetProvider("psiphon")
 class TorWidget : MethodWidgetProvider("tor")
 class GephWidget : MethodWidgetProvider("geph")
 class LanternWidget : MethodWidgetProvider("lantern")
 class UrnetworkWidget : MethodWidgetProvider("urnetwork")
 class QuickWidget : MethodWidgetProvider("quick")
-class MaeWidget : MethodWidgetProvider("mae")
 class FluxWidget : MethodWidgetProvider("flux")
 class FenixWidget : MethodWidgetProvider("fenix")
 class AmneziaWidget : MethodWidgetProvider("amnezia")
@@ -82,14 +80,12 @@ object MethodWidgets {
         "masque" to MasqueWidget::class.java,
         "wireguard" to WireguardWidget::class.java,
         "warp_on_warp" to WarpOnWarpWidget::class.java,
-        "warp" to WarpWidget::class.java,
         "psiphon" to PsiphonWidget::class.java,
         "tor" to TorWidget::class.java,
         "geph" to GephWidget::class.java,
         "lantern" to LanternWidget::class.java,
         "urnetwork" to UrnetworkWidget::class.java,
         "quick" to QuickWidget::class.java,
-        "mae" to MaeWidget::class.java,
         "flux" to FluxWidget::class.java,
         "fenix" to FenixWidget::class.java,
         "amnezia" to AmneziaWidget::class.java,
