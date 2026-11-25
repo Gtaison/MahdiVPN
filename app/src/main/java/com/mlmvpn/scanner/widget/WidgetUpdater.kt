@@ -92,7 +92,6 @@ object WidgetUpdater {
         refreshMethods(context)
         refreshStudio(context, liveOnly = false)
         // It wears the method widgets' style, and speaks the app's language.
-        GerehWidgets.refresh(context)
     }
 
     private fun manager(context: Context): AppWidgetManager? = runCatching { AppWidgetManager.getInstance(context) }.getOrNull()
