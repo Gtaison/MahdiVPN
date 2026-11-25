@@ -93,8 +93,6 @@ fun TransportAdvancedScreen(transport: Transport, onBack: () -> Unit) {
     var manualEndpoint by remember { mutableStateOf(prefs.manualEndpoint) }
     var wgDataCheck by remember { mutableStateOf(prefs.wireguardDataCheck) }
     var chainOuter by remember { mutableStateOf(prefs.chainOuterMode) }
-    var chainOuterTor by remember { mutableStateOf(prefs.chainOuterModeTor) }
-    var torChainArmed by remember { mutableStateOf(prefs.torChainArmed) }
     var killSwitch by remember { mutableStateOf(prefs.killSwitch) }
     var autoReconnect by remember { mutableStateOf(prefs.autoReconnect) }
     var logLevel by remember { mutableStateOf(prefs.logLevel) }
@@ -220,18 +218,6 @@ fun TransportAdvancedScreen(transport: Transport, onBack: () -> Unit) {
             footer = S(R.string.when_psiphon_will_not_connect_on_its) +
                 S(R.string.automatic_tries_the_list_from_the_top) +
                 S(R.string.so_that_search_costs_you_only_once),
-        )
-
-        P_CHAIN_TOR -> IosPickerScreen(
-            title = S(R.string.tor_s_outer_layer),
-            options = CHAIN_OUTER,
-            selectedKey = chainOuterTor,
-            onSelect = { chainOuterTor = it; prefs.chainOuterModeTor = it },
-            onBack = ::pop,
-            backLabel = backLabel,
-            footer = S(R.string.pinned_separately_from_psiphon_because_the_two) +
-                S(R.string.outer_layer_tor_only_wants_a_reachable) +
-                S(R.string.ladder_inside_it_and_is_far_more),
         )
 
         P_TOR_MODE -> IosPickerScreen(
@@ -488,28 +474,6 @@ fun TransportAdvancedScreen(transport: Transport, onBack: () -> Unit) {
                 }
 
                 Transport.TOR -> {
-                    SettingsSectionHeader(S(R.string.when_tor_will_not_bootstrap_on_its))
-                    SettingsGroup {
-                        SettingsToggle(
-                            title = S(R.string.tor_inside_warp),
-                            checked = torChainArmed,
-                            onCheckedChange = { torChainArmed = it; prefs.torChainArmed = it },
-                            icon = Icons.Default.Shield,
-                            tint = Ios.Purple,
-                            subtitle = S(R.string.if_the_network_blocks_tor_itself_bring),
-                        )
-                        Separator()
-                        SettingsRow(S(R.string.outer_layer), Icons.Default.Layers, Ios.Orange,
-                            value = labelOf(CHAIN_OUTER, chainOuterTor),
-                            onClick = { push(P_CHAIN_TOR) })
-                    }
-                    Footer(
-                        S(R.string.only_direct_and_meek_are_allowed_to) +
-                            S(R.string.bridge_obfs4_stalled_once_at_10_and) +
-                            S(R.string.proxy_at_all_and_snowflake_makes_its) +
-                            S(R.string.socks5_connect_cannot_carry)
-                    )
-
                     SettingsSectionHeader(S(R.string.connection_mode_2))
                     SettingsGroup {
                         SettingsRow(S(R.string.reaching_the_network), Icons.Default.Article, Ios.Teal,
@@ -518,8 +482,6 @@ fun TransportAdvancedScreen(transport: Transport, onBack: () -> Unit) {
                     }
                 }
 
-                // Geph has its own settings page (GephSettingsScreen); TransportHost sends its
-                // "advanced" row there, so this page never renders for it.
                 Transport.GEPH -> Unit
                 // «لنترن»'s own choices (routing, the server list) are on its screen; only the shared
                 // sections below apply here.
@@ -848,7 +810,6 @@ private const val P_SHAPING = "shaping"
 private const val P_TLS = "tls"
 private const val P_MANUAL = "manual"
 private const val P_CHAIN = "chain"
-private const val P_CHAIN_TOR = "chain_tor"
 private const val P_TOR_MODE = "tor_mode"
 private const val P_LOG_LEVEL = "log_level"
 private const val P_PERF = "perf"
