@@ -35,7 +35,7 @@ import java.net.Socket
  * Mozilla gives every Firefox account 50 GB a MONTH of its browser VPN: Fastly MASQUE proxies in
  * 33 countries, reached over TLS with an HTTP/2 CONNECT per connection and a short-lived "proxy
  * pass" as the credential. FENIX runs that on the app's own Xray core ([FenixConfig]) behind the
- * usual TUN, so it carries the whole phone; and it hands the same exit to MAE ([FenixRoute]).
+ * usual TUN, so it carries the whole phone.
  *
  * Several accounts: each connection takes the next account in turn (the one used longest ago),
  * after proving it -- a fresh pass from Guardian, with allowance left. While connected, the
@@ -797,82 +797,6 @@ object FenixEngine {
         val cm = app.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
         cm.getNetworkCapabilities(cm.activeNetwork)?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR) == true
     }.getOrDefault(false)
-
-    // ── for MAE ────────────────────────────────────────────────────────────────────────────────
-
-    /**
-     * FENIX as one of MAE's foreign exits: the chosen country's server (the fastest measured one
-     * when the choice is automatic) with an account that has allowance left -- the tunnel's active
-     * account first -- dialled by address. Null when there is no account, MAE use is off, or before
-     * a pass and an address are known. A pass close to its end is renewed in the background, and
-     * MAE re-applies when it arrives.
-     */
-    fun maeRoute(context: Context): FenixRoute? = maeRoutes(context).firstOrNull { it.id == FenixRoute.ID }
-
-    /**
-     * FENIX's exits for MAE: the chosen country's server ([maeRoute]) and, when that is not the US,
-     * the American one beside it -- for the apps that open only from there (Google Flow), which MAE
-     * then proves like any other exit. One account and one pass for both.
-     */
-    fun maeRoutes(context: Context): List<FenixRoute> {
-        init(context)
-        if (!store.forMae) return emptyList()
-        val usable = store.accounts().filter { a ->
-            val q = a.quota
-            !a.signedOut && !(q?.remaining != null && q.remaining < MIN_LEFT_BYTES && (q.resetAt ?: Long.MAX_VALUE) > FenixAuth.now())
-        }
-        val acct = usable.firstOrNull { it.id == store.activeId } ?: usable.firstOrNull() ?: return emptyList()
-        val pass = acct.pass
-        if (pass == null || pass.expiresAt - FenixAuth.now() < 600) {
-            renewForMae(acct.id)
-            if (pass == null || pass.expiresAt <= FenixAuth.now() + 60) return emptyList()
-        }
-        val p = _pings.value
-        val real = _servers.value.filter { it.country != FenixServers.RECOMMENDED }
-        val chosen = when (val c = store.country) {
-            FenixServers.FASTEST, FenixServers.RECOMMENDED -> real.filter { (p[it.country] ?: -1) >= 0 }.minByOrNull { p[it.country]!! }
-            else -> real.firstOrNull { it.country == c }
-        }
-        val out = mutableListOf<FenixRoute>()
-        chosen?.let { s -> maeAddress(s)?.let { out += FenixRoute(s, it, pass.token) } }
-        if (chosen?.country != US) {
-            real.firstOrNull { it.country == US }?.let { s ->
-                maeAddress(s)?.let { out += FenixRoute(s, it, pass.token, FenixRoute.US_ID, FenixRoute.US_TAG) }
-            }
-        }
-        return out
-    }
-
-    private const val US = "US"
-
-    private val maeAddresses = java.util.concurrent.ConcurrentHashMap<String, String>()
-
-    /** A literal address for [server], resolved once in the background (MAE asks often, and fast). */
-    private fun maeAddress(server: FenixServers.Server): String? {
-        maeAddresses[server.host]?.let { return it }
-        scope.launch {
-            FenixServers.resolve(server.host).firstOrNull()?.hostAddress?.substringBefore('%')?.let { maeAddresses[server.host] = it }
-        }
-        return null
-    }
-
-    @Volatile private var maeRenewing = false
-
-    private fun renewForMae(id: String) {
-        if (maeRenewing) return
-        maeRenewing = true
-        scope.launch {
-            try {
-                if (runCatching { tunnelPass(id, minLeftS = 600) }.isSuccess) {
-                    runCatching { com.mlmvpn.scanner.engines.mae.MaeEngine.applyIfConnected() }
-                }
-            } finally { maeRenewing = false }
-        }
-    }
-
-    var forMae: Boolean
-        get() = initialized && store.forMae
-        set(v) { if (initialized) store.forMae = v }
 
     /** Seen exits by chosen country, for the picker. */
     fun exitSeen(): Map<String, String> = if (initialized) store.exitSeen() else emptyMap()
