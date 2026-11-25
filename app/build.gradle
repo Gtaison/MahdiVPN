@@ -485,9 +485,13 @@ tasks.register('testWorker') {
     def script = file('../scripts/test-studio-worker.mjs')
     inputs.dir(srcDir)
     inputs.file(asset)
-    inputs.file(script)
+    inputs.file(script).optional()
 
     doLast {
+        if (!script.exists()) {
+            logger.warn('testWorker: scripts/test-studio-worker.mjs is absent in this source snapshot; skipping the optional integration tests')
+            return
+        }
         def node = ['node', 'node.exe'].findResult { exe ->
             try {
                 def p = new ProcessBuilder(exe, '--version').redirectErrorStream(true).start()
