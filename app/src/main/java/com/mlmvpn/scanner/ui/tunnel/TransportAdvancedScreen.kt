@@ -486,7 +486,7 @@ fun TransportAdvancedScreen(transport: Transport, onBack: () -> Unit) {
                 // «لنترن»'s own choices (routing, the server list) are on its screen; only the shared
                 // sections below apply here.
                 Transport.LANTERN -> Unit
-                // «URnetwork»: its own choices (location, ad blocker, MAE, account) are on its screen.
+                // «URnetwork»: its own choices (location, ad blocker, account) are on its screen.
                 // Of the shared sections below, the per-destination lists become URnetwork's own
                 // routing rules in its core, and the kill switch and reconnect apply as for the rest;
                 // the diagnostics section is the tunnel core's and is left out.
