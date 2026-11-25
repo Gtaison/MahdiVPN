@@ -122,10 +122,20 @@ internal class LocalXrayCore(private val fd: Int, private val onLog: ((String) -
         controller = null
     }
 
-    /** Down plus up through [tag] since the last read (the core resets its counters on a read). */
-    fun traffic(tag: String): Long {
-        val c = controller ?: return 0L
-        return runCatching { c.queryStats(tag, "downlink") + c.queryStats(tag, "uplink") }.getOrDefault(0L)
+    /** All outbound bytes by tag since the last read (the core resets counters on each read). */
+    fun traffic(tags: List<String>): LongArray {
+        val c = controller ?: return LongArray(tags.size)
+        return runCatching {
+            val bytesByTag = HashMap<String, Long>()
+            c.queryAllOutboundTrafficStats().split(';').forEach { entry ->
+                val parts = entry.split(',', limit = 3)
+                if (parts.size == 3 && parts[0].isNotBlank()) {
+                    val value = parts[2].toLongOrNull()?.takeIf { it > 0L } ?: 0L
+                    bytesByTag[parts[0]] = (bytesByTag[parts[0]] ?: 0L) + value
+                }
+            }
+            LongArray(tags.size) { index -> bytesByTag[tags[index]] ?: 0L }
+        }.getOrDefault(LongArray(tags.size))
     }
 }
 
