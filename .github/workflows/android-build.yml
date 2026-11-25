@@ -107,6 +107,43 @@ jobs:
           test -s "$DEST/arm64-v8a/libtun2proxy.so"
           test -s "$DEST/armeabi-v7a/libtun2proxy.so"
 
+      - name: Fetch pinned MHRV 1.9.38 Android JNI cores
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p app/src/main/jniLibs/arm64-v8a app/src/main/jniLibs/armeabi-v7a
+          ARM64="$RUNNER_TEMP/mhrv-arm64.apk"
+          ARMV7="$RUNNER_TEMP/mhrv-armv7.apk"
+          curl -fL --retry 3 --retry-delay 2 \
+            https://github.com/therealaleph/MasterHttpRelayVPN-RUST/releases/download/v1.9.38/mhrv-rs-android-arm64-v8a-v1.9.38.apk \
+            -o "$ARM64"
+          curl -fL --retry 3 --retry-delay 2 \
+            https://github.com/therealaleph/MasterHttpRelayVPN-RUST/releases/download/v1.9.38/mhrv-rs-android-armeabi-v7a-v1.9.38.apk \
+            -o "$ARMV7"
+          echo "8f5764e27bc3c590bfaf037f6050c03fc8a0dc6203ee0e1e7e277efbba0a1437  $ARM64" | sha256sum -c -
+          echo "caf03ff7e0ec9140d4e75d60183ca574fa64d81d49ce692ddb8da706f3afab80  $ARMV7" | sha256sum -c -
+          python3 - "$ARM64" "$ARMV7" app/src/main/jniLibs <<'PY'
+          import pathlib, sys, zipfile
+          specs = [
+              (pathlib.Path(sys.argv[1]), "arm64-v8a"),
+              (pathlib.Path(sys.argv[2]), "armeabi-v7a"),
+          ]
+          root = pathlib.Path(sys.argv[3])
+          for apk, abi in specs:
+              with zipfile.ZipFile(apk) as z:
+                  matches = [n for n in z.namelist()
+                             if pathlib.PurePosixPath(n).name == "libmhrv_rs.so"
+                             and abi in pathlib.PurePosixPath(n).parts]
+                  if len(matches) != 1:
+                      raise SystemExit(f"{apk.name}: expected one libmhrv_rs.so for {abi}, found {matches}")
+                  target = root / abi / "libmhrv_rs.so"
+                  target.parent.mkdir(parents=True, exist_ok=True)
+                  target.write_bytes(z.read(matches[0]))
+                  print(f"Installed {target} ({target.stat().st_size} bytes)")
+          PY
+          test -s app/src/main/jniLibs/arm64-v8a/libmhrv_rs.so
+          test -s app/src/main/jniLibs/armeabi-v7a/libmhrv_rs.so
+
       - name: Build debug APKs
         env:
           GRADLE_USER_HOME: ${{ runner.temp }}/gradle-home
