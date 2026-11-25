@@ -47,7 +47,7 @@ object WidgetConnect {
         data class No(val reason: String) : Ready()
     }
 
-    private val TRANSPORTS = setOf("masque", "wireguard", "warp_on_warp", "warp", "psiphon", "tor", "geph", "lantern", "urnetwork")
+    private val TRANSPORTS = setOf("masque", "wireguard", "warp_on_warp", "psiphon", "tor", "geph", "lantern", "urnetwork")
 
     // ---------------------------------------------------------------------------------------------
     // Readiness
@@ -68,7 +68,6 @@ object WidgetConnect {
             if (t.needsTunnelCore && !TunnelEngine.isAvailable) return Ready.No(tr("هستهٔ تونل روی این گوشی بارگذاری نشد", "The tunnel core did not load on this phone"))
             t.unavailableReason(app)?.let { return Ready.Setup(it) }
             val coreMissing = when (method) {
-                "warp" -> !com.mlmvpn.core.warp.CfWarpEngine.available(app)
                 "geph" -> !com.mlmvpn.core.geph.GephEngine.available(app)
                 "lantern" -> !com.mlmvpn.core.lantern.LanternEngine.available(app)
                 else -> false
@@ -77,16 +76,6 @@ object WidgetConnect {
             return Ready.Yes
         }
         return when (method) {
-            "mae" -> {
-                val mae = com.mlmvpn.scanner.engines.mae.MaeEngine
-                mae.init(app)
-                when {
-                    !mae.hasCloudAccount() -> Ready.Setup(tr("MAE به یک حساب کلادفلر نیاز دارد", "MAE needs a Cloudflare account"))
-                    runCatching { !mae.store.current.onboarded }.getOrDefault(false) ->
-                        Ready.Setup(tr("اول در صفحهٔ MAE برنامه‌هایتان را انتخاب کنید", "Pick your apps on MAE's page first"))
-                    else -> Ready.Yes
-                }
-            }
             "github" -> {
                 val store = com.mlmvpn.scanner.engines.github.GtStore(app)
                 when {
@@ -187,10 +176,6 @@ object WidgetConnect {
             return@withContext true
         }
         when (method) {
-            "mae" -> {
-                com.mlmvpn.scanner.engines.mae.MaeEngine.startTunnelAsync(app)
-                true
-            }
             "github" -> {
                 val gt = com.mlmvpn.scanner.engines.github.GtEngine
                 gt.attach(app)
@@ -550,7 +535,6 @@ object WidgetConnect {
         val tunnel = TunnelController.state.value
         if (tunnel.stage == TunnelStage.STARTING || tunnel.stage == TunnelStage.RUNNING) TunnelController.disconnect(app)
         when (conn.method) {
-            "mae" -> runCatching { com.mlmvpn.scanner.engines.mae.MaeEngine.stopTunnelAsync(app) }
             "github" -> runCatching { com.mlmvpn.scanner.engines.github.GtEngine.disconnect() }
             "proton" -> runCatching { com.mlmvpn.scanner.engines.proton.ProtonEngine.disconnect(app) }
             "vpngate" -> runCatching { com.mlmvpn.scanner.engines.vpngate.VpnGateStore.markDisconnected(app) }
@@ -588,7 +572,7 @@ object WidgetConnect {
             com.mlmvpn.core.geph.GephExits.countries(com.mlmvpn.core.geph.GephExits.cached(app), level)
                 .filter { it.usable(level) > 0 }.map { it.code }
         }
-        "masque", "wireguard", "warp" -> com.mlmvpn.core.warp.Nat64Exits.countries(app) + measuredIpv4(app)
+        "masque", "wireguard" -> com.mlmvpn.core.warp.Nat64Exits.countries(app) + measuredIpv4(app)
         "warp_on_warp" -> measuredIpv4(app)
         "flux" -> {
             com.mlmvpn.scanner.engines.flux.FluxEngine.init(app)
@@ -653,7 +637,7 @@ object WidgetConnect {
 
     /** What a country choice means for [method], when it has a condition worth saying. */
     fun countryNote(method: String): String? = when (method) {
-        "masque", "wireguard", "warp" -> tr(
+        "masque", "wireguard" -> tr(
             "روی اینترنت دارای IPv6 از دروازهٔ NAT64 و روی بقیه از «خروج IPv4» که در صفحهٔ همین روش آماده کرده‌اید خارج می‌شود. اگر هیچ‌کدام برای این کشور آماده نباشد، روش از همان جایی خارج می‌شود که خودش انتخاب کند و ویجت کشور واقعی را نشان می‌دهد.",
             "On an internet with IPv6 it leaves through a NAT64 gateway, elsewhere through the IPv4 exit you prepared on this method's page. If neither is ready for this country, the method leaves wherever it would anyway and the widget shows the real country.",
         )
@@ -675,7 +659,7 @@ object WidgetConnect {
 
     /** Whether a design for [method] can carry a country at all (the studio hides the row otherwise). */
     fun hasCountries(method: String): Boolean = method in setOf(
-        "psiphon", "tor", "geph", "masque", "wireguard", "warp", "warp_on_warp", "flux", "fenix",
+        "psiphon", "tor", "geph", "masque", "wireguard", "warp_on_warp", "flux", "fenix",
         "amnezia", "proton", "windscribe", "outline", "openvpn", "vpngate", "github",
     )
 }
