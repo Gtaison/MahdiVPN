@@ -176,7 +176,6 @@ private fun Ready(accounts: List<AccountView>, onCountry: () -> Unit, onAccounts
     val conn by FenixEngine.conn.collectAsState()
     val country by FenixEngine.country.collectAsState()
     val pings by FenixEngine.pings.collectAsState()
-    var forMae by remember { mutableStateOf(FenixEngine.forMae) }
     val connected = conn is Conn.Connected
     val busy = conn is Conn.Connecting
     LaunchedEffect(Unit) { FenixEngine.refreshAll() }
@@ -220,16 +219,7 @@ private fun Ready(accounts: List<AccountView>, onCountry: () -> Unit, onAccounts
     )
     com.mlmvpn.scanner.ui.RouteChips()
 
-    SettingsSectionHeader(stringResource(R.string.fenix_mae_section))
-    SettingsGroup {
-        SettingsToggle(
-            title = stringResource(R.string.fenix_mae_toggle),
-            checked = forMae,
-            onCheckedChange = { forMae = it; FenixEngine.forMae = it },
-            icon = Icons.Default.AutoAwesome, tint = Ios.Blue,
-        )
-    }
-    SettingsFooter(stringResource(R.string.fenix_mae_footer))
+
 }
 
 // ── the accounts page ───────────────────────────────────────────────────────────────────────────
