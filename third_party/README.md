@@ -32,7 +32,7 @@ In CI, the pinned Maven AAR is downloaded into `app/libs/`, checked against the 
 published in the Maven repository, and transformed automatically:
 
 ```bash
-python3 scripts/repackage-psiphon-aar.py app/libs/psiphontunnel-2.0.39.aar app/libs/psiphontunnel-2.0.39-ns.aar
+python3 scripts/repackage-psiphon-aar.py app/libs/psiphontunnel-2.0.39.aar
 ```
 
 The script explains every substitution and verifies its own output. Run it again after
