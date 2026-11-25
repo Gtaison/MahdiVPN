@@ -146,7 +146,7 @@ internal object OutlineProbe {
         val again = entries.filter { e -> results.any { it.first.id == e.first.id && it.second == null } }
         if (retries <= 0 || again.isEmpty()) { again.forEach { onResult(it.first.id, null) }; return }
         again.chunked(maxOf(1, (again.size + 1) / 2))
-            .forEach { runBatch(app, it, timeoutMs, unused shared/through docs, parallel, onResult, retries - 1, 2, starts) }
+            .forEach { runBatch(app, it, timeoutMs, parallel, onResult, retries - 1, 2, starts) }
     }
 
     private fun outbound(uri: String): JSONObject? = runCatching {
