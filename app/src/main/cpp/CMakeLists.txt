@@ -16,15 +16,6 @@ if(EXISTS ${TUNNEL_CORE})
         "-Wl,-z,common-page-size=16384")
 endif()
 
-# Android 15 can run with 16 KB memory pages. A shared library whose LOAD
-# segments are aligned to the older 4 KB cannot be mapped on such a device, so
-# every .so in the APK has to be linked with the larger alignment. NDK r28 does
-# this by default; asking for it explicitly keeps the result the same whichever
-# NDK Gradle picks.
-target_link_options(tunneljni PRIVATE
-    "-Wl,-z,max-page-size=16384"
-    "-Wl,-z,common-page-size=16384")
-
 # badvpn tun2socks (lwIP TCP/IP stack in userspace) -> libtun2socks.so.
 #
 # This is the path for transports that hand us a local SOCKS5 port rather than
