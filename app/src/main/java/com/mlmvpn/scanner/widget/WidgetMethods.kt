@@ -17,8 +17,8 @@ import com.mlmvpn.scanner.ui.home.HomeDestinations
 object WidgetMethods {
 
     val IDS: List<String> = listOf(
-        "masque", "wireguard", "warp_on_warp", "warp", "psiphon", "tor", "geph", "lantern", "urnetwork",
-        "quick", "mae", "flux", "fenix", "amnezia", "proton", "windscribe", "outline", "npv", "github",
+        "masque", "wireguard", "warp_on_warp", "psiphon", "tor", "geph", "lantern", "urnetwork",
+        "quick", "flux", "fenix", "amnezia", "proton", "windscribe", "outline", "npv", "github",
         "vpngate", "openvpn", "nodes", "iran", "fronting", "antisanction", "emergency_2", "emergency_3",
     )
 
