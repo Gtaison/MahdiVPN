@@ -57,10 +57,6 @@ object TorManager {
     /** Preference key holding the user's choice of [TorMode]. */
     const val MODE_PREF = "tor_mode"
 
-    // Retained as a compatibility preference key; Tor-over-WARP is disabled.
-    const val CHAIN_ARMED_PREF = "tor_chain_armed"
-    const val CHAIN_ARMED_DEFAULT = false
-
     /** Last successful AUTO transport, used to prioritize the next direct attempt. */
     private const val WINNER_PREF = "tor_winning_mode"
 
@@ -174,12 +170,6 @@ object TorManager {
         Rung(TorMode.WEBTUNNEL, BRIDGE_TIMEOUT_S),
         Rung(TorMode.SNOWFLAKE, BRIDGE_TIMEOUT_S),
     )
-
-    /** Tor-over-WARP is disabled in this fork. */
-    fun isChainable(mode: TorMode): Boolean = false
-
-    /** Compatibility shim: Tor never starts an outer WARP leg. */
-    fun chainArmed(context: Context): Boolean = false
 
     @Volatile
     private var torProcess: Process? = null
