@@ -66,25 +66,18 @@ internal object MethodItems {
         ),
         SimpleItem(
             "m_lantern", BackupKind.METHOD, "لنترن", "Lantern",
-            listOf(PrefsSlice("settings", keys = setOf("lantern_smart", "lantern_for_mae"))),
+            listOf(PrefsSlice("settings", keys = setOf("lantern_smart"))),
             tileId = "lantern",
         ),
         SimpleItem(
             "m_urnetwork", BackupKind.METHOD, "URnetwork", "URnetwork",
-            listOf(PrefsSlice("urnetwork", keys = setOf("blocker", "location", "location_name", "location_cc", "for_mae"))),
+            listOf(PrefsSlice("urnetwork", keys = setOf("blocker", "location", "location_name", "location_cc"))),
             tileId = "urnetwork",
         ),
         SimpleItem(
             "m_geph", BackupKind.METHOD, "گف", "Geph",
             listOf(PrefsSlice("geph", whole = true, except = setOf("last_fastest"))),
             tileId = "geph",
-        ),
-        StateKeysItem(
-            "m_mae", "MAE: سرویس‌ها، سایت‌ها و برنامه‌های شما", "MAE: your services, sites and apps", "mae",
-            path = "files/mae/state.json",
-            keys = listOf("onboarded", "selected", "customSites", "apps", "siteHosts", "xpk"),
-            empty = { JSONObject().put("schema", com.mlmvpn.scanner.engines.mae.store.MaeStateCodec.SCHEMA) },
-            validate = { com.mlmvpn.scanner.engines.mae.store.MaeStateCodec.decode(it) },
         ),
         StateKeysItem(
             "m_flux", "FLUX", "FLUX", "flux",
@@ -95,7 +88,7 @@ internal object MethodItems {
         ),
         SimpleItem(
             "m_fenix", BackupKind.METHOD, "FENIX", "FENIX",
-            listOf(PrefsSlice("fenix", keys = setOf("country", "for_mae", "http1"))),
+            listOf(PrefsSlice("fenix", keys = setOf("country", "http1"))),
             tileId = "fenix",
         ),
         StateKeysItem(
