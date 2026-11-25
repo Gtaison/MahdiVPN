@@ -1,0 +1,11 @@
+{
+  "endpoint": "/api/v1/catalog",
+  "storage": "DI1SjVQNqaW3_wBomRQYVJLCSgStd-6xV3bcFICAwzA",
+  "audience": "com.yamyam.vpn.catalog.v1",
+  "trustedSigningKeys": [
+    {
+      "id": "catalog-2026-01",
+      "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUaBnBN18BKGzGUsUxx43vv5LBe0EMygqZoRjjk5pnKJS8XOadnBahBkPWBVIBcP5DgbAN4ikZpE1Dp_tbXCf1A"
+    }
+  ]
+}
