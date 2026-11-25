@@ -156,8 +156,7 @@
             android:exported="false"
             android:process=":xmeasure" />
 
-        <!-- Every other Xray core the main process asks for (XrayHosts): the VPN's own core, MAE's
-             probe core, and the test cores of FLUX, the node list, the WireGuard scanner and
+        <!-- Every other Xray core the main process asks for (XrayHosts): the VPN's own core and probe core, plus the test cores of FLUX, the node list, the WireGuard scanner and
              Windscribe. A Go panic in a core ends its host process, never the app; the VPN's
              host gets the tun as a descriptor of its own. -->
         <service
