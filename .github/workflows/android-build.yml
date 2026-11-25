@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: android-build-${{ github.ref }}
+  group: android-build-lean-v2-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -84,6 +84,7 @@ jobs:
           bash scripts/verify-selected-apk.sh "$OUT/mlmvpn-1.2.45-arm64-v8a-debug.apk" arm64-v8a
           bash scripts/verify-selected-apk.sh "$OUT/mlmvpn-1.2.45-armeabi-v7a-debug.apk" armeabi-v7a
           bash scripts/verify-selected-apk.sh "$OUT/mlmvpn-1.2.45-universal-debug.apk" arm64-v8a
+          bash scripts/verify-selected-apk.sh "$OUT/mlmvpn-1.2.45-universal-debug.apk" armeabi-v7a
 
       - name: Upload APKs
         uses: actions/upload-artifact@v4
