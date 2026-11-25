@@ -106,6 +106,41 @@ jobs:
           test -s "$DEST/arm64-v8a/libtun2proxy.so"
           test -s "$DEST/armeabi-v7a/libtun2proxy.so"
 
+      - name: Fetch pinned tun2proxy 0.7.21 Android JNI libraries
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARCHIVE="$RUNNER_TEMP/tun2proxy-android-libs.zip"
+          DEST="app/src/main/jniLibs"
+          curl -fL --retry 3 --retry-delay 2 \
+            https://github.com/tun2proxy/tun2proxy/releases/download/v0.7.21/tun2proxy-android-libs.zip \
+            -o "$ARCHIVE"
+          echo "25fe0fb6c853cbb8b1c0c58db8eb9b3f9901336d3511edec5650651c1144c11e  $ARCHIVE" | sha256sum -c -
+          python3 - "$ARCHIVE" "$DEST" <<'PY'
+          import pathlib, sys, zipfile
+          archive, destination = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
+          wanted = {"arm64-v8a", "armeabi-v7a"}
+          found = set()
+          with zipfile.ZipFile(archive) as z:
+              for item in z.infolist():
+                  if item.is_dir() or pathlib.PurePosixPath(item.filename).name != "libtun2proxy.so":
+                      continue
+                  parts = pathlib.PurePosixPath(item.filename).parts
+                  abi = next((part for part in parts if part in wanted), None)
+                  if abi is None:
+                      continue
+                  target = destination / abi / "libtun2proxy.so"
+                  target.parent.mkdir(parents=True, exist_ok=True)
+                  target.write_bytes(z.read(item))
+                  found.add(abi)
+                  print(f"Installed {target} ({target.stat().st_size} bytes)")
+          missing = wanted - found
+          if missing:
+              raise SystemExit(f"tun2proxy archive missing ABI libraries: {sorted(missing)}")
+          PY
+          test -s "$DEST/arm64-v8a/libtun2proxy.so"
+          test -s "$DEST/armeabi-v7a/libtun2proxy.so"
+
       - name: Build debug APKs
         env:
           GRADLE_USER_HOME: ${{ runner.temp }}/gradle-home
