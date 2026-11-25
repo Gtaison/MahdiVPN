@@ -274,8 +274,6 @@ internal object OutlineAdapter : XrayAdapter() {
 
     override fun variants(ctx: Context, line: LineSnapshot) = listOf(
         Variant("pool", tr("سرورهای Outline · مستقیم", "Outline servers · direct"), quick = true, budgetMs = 90_000),
-        // The way the Outline section itself gets through where the line drops the servers.
-        Variant("in_warp", tr("سرورهای Outline · از داخل وارپ", "Outline servers · inside WARP"), budgetMs = 240_000, unneededIf = "pool"),
     )
 
     override suspend fun prepare(kit: ScoutKit, v: Variant): Prepared {
@@ -283,19 +281,6 @@ internal object OutlineAdapter : XrayAdapter() {
         val pool = com.mlmvpn.scanner.engines.outline.OutlineEngine.scoutCandidates(kit.context)
         if (pool.isEmpty()) return Prepared.Failed(ScoutStatus.SERVICE_DOWN,
             tr("فهرست سرورهای Outline دریافت نشد", "The Outline server lists could not be fetched"))
-        if (v.id == "in_warp") {
-            kit.step(Step.PREPARING, tr("پیدا کردن راه ورود به وارپ…", "Finding a way into WARP…"))
-            val carrier = runCatching { com.mlmvpn.scanner.engines.amnezia.AmzEngine.warpCarrier(kit.context) }.getOrNull()
-                ?: return Prepared.Failed(ScoutStatus.FAILED, tr("راهی به وارپ روی این خط پیدا نشد", "No way into WARP on this line"), Step.CONNECTING)
-            kit.step(Step.CONNECTING, tr("آزمودن ${pool.size} سرور از داخل وارپ…", "Trying ${pool.size} servers inside WARP…"))
-            val got = java.util.concurrent.ConcurrentHashMap<String, Long>()
-            com.mlmvpn.scanner.engines.outline.OutlineProbe.test(kit.context, pool, 14_000, carrier) { id, ms -> if (ms != null) got[id] = ms }
-            val best = got.minByOrNull { it.value }?.let { e -> pool.firstOrNull { it.id == e.key } }
-                ?: return Prepared.Failed(ScoutStatus.FAILED, tr("هیچ‌کدام از ${pool.size} سرور Outline از داخل وارپ هم جواب نداد", "None of ${pool.size} Outline servers answered inside WARP either"), Step.CONNECTING)
-            val json = com.mlmvpn.scanner.engines.outline.OutlineCf.probeConfig(best.uri, carrier)
-                ?: return Prepared.Failed(ScoutStatus.INCONCLUSIVE, tr("کلید خوانده نشد", "Could not read the key"))
-            return Prepared.Ready(XrayHandle(json), detail = listOfNotNull(countryName(best.country), tr("از داخل وارپ", "inside WARP")).joinToString(" · "))
-        }
         kit.step(Step.CONNECTING, tr("آزمودن ${pool.size} سرور…", "Trying ${pool.size} servers…"))
         val won = fastest(kit.context, pool.map { it.uri }, parallel = 6, timeoutMs = 10_000)
             ?: return Prepared.Failed(ScoutStatus.FAILED, tr("هیچ‌کدام از ${pool.size} سرور Outline روی این خط جواب نداد", "None of ${pool.size} Outline servers answered on this line"), Step.CONNECTING)
