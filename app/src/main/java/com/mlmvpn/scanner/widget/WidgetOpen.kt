@@ -32,10 +32,6 @@ object WidgetOpen {
 
     /** Called by MainActivity with every intent it receives; takes the request off it, once. */
     fun offer(intent: Intent?) {
-        intent?.getStringExtra(EXTRA_OPEN_SETTING)?.takeIf { it.isNotBlank() }?.let {
-            intent.removeExtra(EXTRA_OPEN_SETTING)
-            pendingSetting.value = it
-        }
         val tile = intent?.getStringExtra(EXTRA_OPEN_TILE)?.takeIf { it.isNotBlank() } ?: return
         intent.removeExtra(EXTRA_OPEN_TILE)
         pending.value = tile
