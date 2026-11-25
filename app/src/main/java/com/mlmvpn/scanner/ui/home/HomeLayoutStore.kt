@@ -58,7 +58,16 @@ object HomeLayoutStore {
     /** 4 columns x 6 rows. Past this the grid would need horizontal paging, which it has not got. */
     const val CAPACITY = 24
 
-    fun load(context: Context): List<BoardItem> = loadAll(context)
+    private val retiredAppIds = setOf("mlmchat", "mae", "warp")
+
+    /** Prune retired destinations from layouts saved by older versions, including inside folders. */
+    fun load(context: Context): List<BoardItem> = loadAll(context).mapNotNull { item ->
+        when (item) {
+            is BoardItem.App -> item.takeIf { it.id !in retiredAppIds }
+            is BoardItem.Folder -> item.copy(apps = item.apps.filterNot { it.id in retiredAppIds })
+                .takeIf { it.apps.isNotEmpty() }
+        }
+    }
 
     private fun loadAll(context: Context): List<BoardItem> {
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
