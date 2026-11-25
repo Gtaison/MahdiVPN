@@ -5,7 +5,6 @@ import android.os.Bundle
 import android.util.Log
 import com.mlmvpn.core.warp.AwgHostClient
 import com.mlmvpn.core.warp.XrayProbeService
-import com.mlmvpn.scanner.engines.amnezia.AmzCarrier
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.NonCancellable
@@ -37,7 +36,7 @@ import java.net.Socket
  *
  * One core per batch: a SOCKS inbound per server, wired by tag to that server's Shadowsocks
  * outbound. With [carrier] every outbound dials through Cloudflare WARP's WireGuard inside the same
- * core ([AmzCarrier.outbounds]): one key, one session, for the whole batch.
+ * core ([carrier.outbounds]): one key, one session, for the whole batch.
  *
  * Batches are fed as a stream ([testStream]): a batch starts as soon as servers are waiting, so the
  * first delays arrive while the TCP knock is still going down the list. The whole list used to be
@@ -61,31 +60,18 @@ internal object OutlineProbe {
     private class Starts { var ok = 0; var failedInRow = 0 }
 
     /** [servers] as one stream; see [testStream]. */
-    suspend fun test(context: Context, servers: List<OutlineServer>, timeoutMs: Int, carrier: AmzCarrier.Carrier?,
-                     batch: Int = BATCH, parallel: Int = PARALLEL, viaSocks: Int = 0, onResult: (String, Long?) -> Unit) {
+    suspend fun test(context: Context, servers: List<OutlineServer>, timeoutMs: Int,
+                     batch: Int = BATCH, parallel: Int = PARALLEL, onResult: (String, Long?) -> Unit) {
         val input = Channel<OutlineServer>(Channel.UNLIMITED)
         servers.forEach { input.trySend(it) }
         input.close()
-        testStream(context, input, timeoutMs, carrier, batch, parallel, viaSocks, onResult)
+        testStream(context, input, timeoutMs, batch, parallel, onResult)
     }
 
-    /**
-     * Measures every server that comes out of [input] until it is closed and drained. Each one ends in
-     * exactly one [onResult]: its delay in ms, or null when it carried nothing.
-     *
-     * The way in: straight, or from inside WARP -- through [carrier] (WARP's WireGuard inside the same
-     * core) or through [viaSocks] (a loopback SOCKS port into WARP: [com.mlmvpn.core.warp.WarpLeg]).
-     */
-    suspend fun testStream(context: Context, input: ReceiveChannel<OutlineServer>, timeoutMs: Int, carrier: AmzCarrier.Carrier?,
-                           batch: Int = BATCH, parallel: Int = PARALLEL, viaSocks: Int = 0, onResult: (String, Long?) -> Unit) {
+    /** Measures every server in the stream using direct Shadowsocks connections only. */
+    suspend fun testStream(context: Context, input: ReceiveChannel<OutlineServer>, timeoutMs: Int,
+                           batch: Int = BATCH, parallel: Int = PARALLEL, onResult: (String, Long?) -> Unit) {
         val app = context.applicationContext
-        val shared = carrier?.let { AmzCarrier.outbounds(it) }
-            ?: if (viaSocks > 0) listOf(OutlineCf.socksLeg(viaSocks)) else emptyList()
-        val through = when {
-            carrier != null -> AmzCarrier.TAG
-            viaSocks > 0 -> OutlineCf.LEG_TAG
-            else -> null
-        }
         val starts = Starts()
         lock.withLock {
             try {
@@ -101,14 +87,13 @@ internal object OutlineProbe {
                         if (left <= 0) break
                         chunk += withTimeoutOrNull(left) { input.receiveCatching().getOrNull() } ?: break
                     }
-                    val entries = chunk.mapNotNull { s -> OutlineCf.outbound(s.uri)?.let { s to it } }
-                    chunk.filter { s -> entries.none { it.first.id == s.id } }.forEach { onResult(it.id, null) }
+                    val entries = chunk.mapNotNull { server -> outbound(server.uri)?.let { server to it } }
+                    chunk.filter { server -> entries.none { it.first.id == server.id } }.forEach { onResult(it.id, null) }
                     if (starts.ok == 0 && starts.failedInRow >= BROKEN_AFTER) {
-                        // The test process does not start at all here: nothing below would be a test.
                         entries.forEach { onResult(it.first.id, null) }
                         continue
                     }
-                    runBatch(app, entries, timeoutMs, shared, through, parallel, onResult, retries = 2, startTries = 2, starts = starts)
+                    runBatch(app, entries, timeoutMs, parallel, onResult, retries = 2, startTries = 2, starts = starts)
                 }
             } finally {
                 if (coreUp) withContext(NonCancellable + Dispatchers.IO) { stop(app) }
@@ -118,12 +103,12 @@ internal object OutlineProbe {
     }
 
     private suspend fun runBatch(app: Context, entries: List<Pair<OutlineServer, JSONObject>>, timeoutMs: Int,
-                                 shared: List<JSONObject>, through: String?, parallel: Int, onResult: (String, Long?) -> Unit,
+                                 parallel: Int, onResult: (String, Long?) -> Unit,
                                  retries: Int, startTries: Int, starts: Starts) {
         if (entries.isEmpty()) return
         if (starts.ok == 0 && starts.failedInRow >= BROKEN_AFTER) { entries.forEach { onResult(it.first.id, null) }; return }
         val ports = withContext(Dispatchers.IO) { entries.map { freePort() } }
-        val started = start(app, config(entries, ports, shared, through))
+        val started = start(app, config(entries, ports))
         if (!started.ok) {
             starts.failedInRow++
             when {
@@ -131,11 +116,11 @@ internal object OutlineProbe {
                 // process died for a reason of its own: the same batch once more, in a fresh process,
                 // before anything is judged. This used to fail every server of the batch untested.
                 started.died && startTries > 1 ->
-                    runBatch(app, entries, timeoutMs, shared, through, parallel, onResult, retries, startTries - 1, starts)
+                    runBatch(app, entries, timeoutMs, parallel, onResult, retries, startTries - 1, starts)
                 // One outbound the core cannot build -- or one that panics it at start -- takes the
                 // whole batch down with it: halves, until it is alone.
                 entries.size > 1 -> entries.chunked((entries.size + 1) / 2)
-                    .forEach { runBatch(app, it, timeoutMs, shared, through, parallel, onResult, retries, 2, starts) }
+                    .forEach { runBatch(app, it, timeoutMs, parallel, onResult, retries, 2, starts) }
                 else -> onResult(entries[0].first.id, null)
             }
             return
@@ -162,10 +147,17 @@ internal object OutlineProbe {
         val again = entries.filter { e -> results.any { it.first.id == e.first.id && it.second == null } }
         if (retries <= 0 || again.isEmpty()) { again.forEach { onResult(it.first.id, null) }; return }
         again.chunked(maxOf(1, (again.size + 1) / 2))
-            .forEach { runBatch(app, it, timeoutMs, shared, through, parallel, onResult, retries - 1, 2, starts) }
+            .forEach { runBatch(app, it, timeoutMs, unused shared/through docs, parallel, onResult, retries - 1, 2, starts) }
     }
 
-    private fun config(entries: List<Pair<OutlineServer, JSONObject>>, ports: List<Int>, shared: List<JSONObject>, through: String?): String {
+    private fun outbound(uri: String): JSONObject? = runCatching {
+        val parsed = com.mlmvpn.scanner.utils.VpnConfig.parseUri(uri) ?: return null
+        val json = JSONObject(com.mlmvpn.scanner.utils.XrayJsonGenerator.generateSpeedtestConfig(parsed))
+        val outs = json.optJSONArray("outbounds") ?: return null
+        (0 until outs.length()).mapNotNull { outs.optJSONObject(it) }.firstOrNull { it.optString("tag") == "proxy" }
+    }.getOrNull()
+
+    private fun config(entries: List<Pair<OutlineServer, JSONObject>>, ports: List<Int>): String {
         val inbounds = JSONArray()
         val outbounds = JSONArray()
         val rules = JSONArray()
@@ -174,11 +166,9 @@ internal object OutlineProbe {
             inbounds.put(JSONObject().put("tag", inTag).put("port", ports[i]).put("listen", "127.0.0.1").put("protocol", "socks")
                 .put("settings", JSONObject().put("auth", "noauth").put("udp", false)))
             val out = JSONObject(outbound.toString()).put("tag", outTag)
-            if (through != null) OutlineCf.dialThrough(out, through)
             outbounds.put(out)
             rules.put(JSONObject().put("type", "field").put("inboundTag", JSONArray().put(inTag)).put("outboundTag", outTag))
         }
-        shared.forEach { outbounds.put(JSONObject(it.toString())) }
         outbounds.put(JSONObject().put("tag", "direct").put("protocol", "freedom"))
         return JSONObject()
             .put("remarks", "mlm-outline-probe")
