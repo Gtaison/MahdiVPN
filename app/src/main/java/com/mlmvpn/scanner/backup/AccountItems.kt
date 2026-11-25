@@ -22,7 +22,7 @@ internal object AccountItems {
     val all: List<BackupContributor> = listOf(
         Cloudflare, Deploys, WarpIdentities, Geph, Urnetwork, ZeroTrust, Github, Fenix, Windscribe, OpenVpn, Proton,
         V2ray, ScannerGroups, QuickSaved, OutlineKeys, AmneziaConfigs, FluxLinks, TgProxies, GstRelays,
-        Conduit, Certificates, MaeIdentity,
+        Conduit, Certificates,
     )
 
     // ── Cloudflare ─────────────────────────────────────────────────────────────────────────────
@@ -71,7 +71,7 @@ internal object AccountItems {
 
     /**
      * What the app put on those accounts: the panels (Nova, Netra, Spider, Gozargah), the edge gateway,
-     * the subscription generator, MAE's US exit, and WARP's registration relay with its key.
+     * the subscription generator and WARP's registration relay with its key.
      */
     private object Deploys : SimpleItem(
         "acc_deploys", BackupKind.ACCOUNTS, "ورکرها و پنل‌های ساخته‌شده روی حساب‌های کلادفلر", "Workers and panels on your Cloudflare accounts",
@@ -82,7 +82,6 @@ internal object AccountItems {
             PrefsSlice("gozargah_panel", whole = true),
             PrefsSlice("edge_gateway", whole = true),
             PrefsSlice("subgen_prefs", whole = true),
-            PrefsSlice("mae", whole = true),
             PrefsSlice("warp_id_relay", keys = setOf("account", "script", "url", "version")),
         ),
     ) {
@@ -859,49 +858,5 @@ internal object AccountItems {
         }
     }
 
-    /** MAE's own WARP identities, its exit worker and the configs it read from the user's panels. */
-    private object MaeIdentity : BackupContributor {
-        override val id = "acc_mae"
-        override val kind = BackupKind.ACCOUNTS
-        override fun title() = tr("هویت و ورکر MAE", "MAE identity and worker")
 
-        private const val FILE = "files/mae/state.json"
-
-        override fun export(ctx: Context): JSONObject? {
-            val text = dataFile(ctx, FILE).takeIf { it.isFile }?.readText() ?: return null
-            val s = JSONObject(text)
-            val out = JSONObject()
-            for (k in listOf("warp", "warpProbe")) s.optJSONObject(k)?.let { w -> out.put(k, w.copy().apply { put("k", Seals.open(w.getString("k"))) }) }
-            s.optJSONObject("worker")?.let { w -> out.put("worker", w.copy().apply { put("id", Seals.open(w.getString("id"))) }) }
-            s.optJSONArray("cloudLinks")?.strings()?.takeIf { it.isNotEmpty() }?.let { links ->
-                out.put("cloudLinks", JSONArray(links.map(Seals::open)))
-                out.put("cloudAt", s.optLong("cloudAt"))
-            }
-            return if (out.length() == 0) null else out
-        }
-
-        override fun plan(ctx: Context, data: JSONObject, dataVersion: Int, mode: RestoreMode, plan: RestorePlan) {
-            val s = currentText(ctx, plan, FILE)?.let(::JSONObject)
-                ?: JSONObject().put("schema", com.mlmvpn.scanner.engines.mae.store.MaeStateCodec.SCHEMA)
-            for (k in listOf("warp", "warpProbe")) {
-                val w = data.optJSONObject(k)
-                if (w != null) s.put(k, w.copy().apply { put("k", Seals.seal(w.getString("k"))) })
-                else if (mode == RestoreMode.REPLACE) s.remove(k)
-            }
-            val worker = data.optJSONObject("worker")
-            if (worker != null) s.put("worker", worker.copy().apply { put("id", Seals.seal(worker.getString("id"))) })
-            else if (mode == RestoreMode.REPLACE) s.remove("worker")
-            val links = data.optJSONArray("cloudLinks")?.strings()
-            if (links != null) {
-                val now = if (mode == RestoreMode.MERGE) s.optJSONArray("cloudLinks")?.strings().orEmpty().mapNotNull { runCatching { Seals.open(it) }.getOrNull() } else emptyList()
-                s.put("cloudLinks", JSONArray((now + links).distinct().map(Seals::seal)))
-                s.put("cloudAt", maxOf(s.optLong("cloudAt"), data.optLong("cloudAt")))
-            } else if (mode == RestoreMode.REPLACE) {
-                s.remove("cloudLinks")
-            }
-            val text = s.toString()
-            com.mlmvpn.scanner.engines.mae.store.MaeStateCodec.decode(text)
-            plan.putFile(FILE, text.toByteArray(Charsets.UTF_8))
-        }
-    }
 }
