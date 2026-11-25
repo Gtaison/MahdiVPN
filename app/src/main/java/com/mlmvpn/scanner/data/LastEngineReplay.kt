@@ -44,10 +44,7 @@ object LastEngineReplay {
                 com.mlmvpn.scanner.openvpn.OpenVpnRuntime.connect(app, last.profileId, last.accountId)
             }
 
-            is LastEngine.Record.Xray -> if (last.nodeId == LastEngine.MAE_MARKER) {
-                // MAE decides per network: a fresh config for this one, never the last one.
-                startMae(app)
-            } else if (last.nodeId == LastEngine.FENIX_MARKER) {
+            is LastEngine.Record.Xray -> if (last.nodeId == LastEngine.FENIX_MARKER) {
                 withContext(Dispatchers.IO) { TunnelExclusion.releaseForXray(app) }
                 com.mlmvpn.scanner.engines.fenix.FenixEngine.connectAsync(app)
             } else if (last.nodeId == LastEngine.FLUX_MARKER) {
@@ -105,13 +102,6 @@ object LastEngineReplay {
                     .putExtra(TunnelVpnService.EXTRA_CONFIG, config)
             )
         }
-    }
-
-    /** MAE, compiled now for this network (its engine then follows the session by itself). */
-    private suspend fun startMae(app: Context) {
-        withContext(Dispatchers.IO) { TunnelExclusion.releaseForXray(app) }
-        val config = withContext(Dispatchers.IO) { com.mlmvpn.scanner.engines.mae.MaeEngine.freshConfig(app) }
-        startXray(app, config, com.mlmvpn.scanner.engines.mae.MaeEngine.NODE_ID)
     }
 
     /** Replay one specific engine, exactly as it was. */
