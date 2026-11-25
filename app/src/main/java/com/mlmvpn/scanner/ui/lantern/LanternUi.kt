@@ -161,26 +161,7 @@ fun ColumnScope.LanternPanel() {
             "«Fresh server list» clears the kept list and the account its servers were assigned to, so the next connect gets a new list -- useful when the current servers do not answer from your internet. Lantern picks the exit country itself; the free tier has no country choice."),
     )
 
-    // ── MAE ──
-    var forMae by remember { mutableStateOf(LanternSettings.forMae(ctx)) }
-    SettingsSectionHeader("MAE")
-    SettingsGroup {
-        SettingsToggle(
-            title = tr("استفاده در MAE", "Use in MAE"),
-            checked = forMae,
-            onCheckedChange = {
-                forMae = it
-                LanternSettings.setForMae(ctx, it)
-                com.mlmvpn.scanner.engines.mae.MaeEngine.lanternForMaeChanged()
-            },
-            icon = Icons.Default.AutoAwesome,
-            tint = Ios.Blue,
-        )
-    }
-    SettingsFooter(
-        tr("وقتی MAE وصل است، لنترن یکی از خروجی‌های خارجی آن می‌شود: یک هستهٔ لنترن جدا، با فهرست سرورهای همین کاشی، کنار MAE اجرا می‌شود و MAE برای هر برنامه خودش می‌سنجد که از لنترن باز می‌شود یا نه. به لنترنِ این کاشی دست نمی‌زند.",
-            "While MAE is connected, Lantern becomes one of its exits abroad: a separate Lantern core, with this tile's server list, runs beside MAE, and MAE checks for each app by itself whether it opens through Lantern. The Lantern of this tile is not touched."),
-    )
+
 }
 
 /** The core's stage, the list, where it comes out, and its last lines -- while it runs and after it stopped. */
