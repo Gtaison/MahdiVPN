@@ -36,11 +36,15 @@ jobs:
 
       - name: Remove Windows-only local JDK settings from CI checkout
         run: |
-          sed -i '/^org.gradle.java.home=/d' gradle.properties
-          sed -i '/^org.gradle.java.installations.paths=/d' gradle.properties
-          sed -i 's/ -Djdk.net.unixdomain.tmpdir=[^ ]*//' gradle.properties
+          find . -name gradle.properties -type f -exec sed -i '/^org.gradle.java.home=/d; /^org.gradle.java.installations.paths=/d; s/ -Djdk.net.unixdomain.tmpdir=[^ ]*//' {} +
+          if grep -R -n 'org.gradle.java.home\|org.gradle.java.installations.paths' --include=gradle.properties .; then
+            echo "A local JDK path is still present in Gradle properties"
+            exit 1
+          fi
 
       - name: Build debug APKs
+        env:
+          GRADLE_USER_HOME: ${{ runner.temp }}/gradle-home
         run: bash ./gradlew --no-daemon :app:assembleDebug
 
       - name: Upload APKs
