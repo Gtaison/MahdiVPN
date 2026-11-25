@@ -22,6 +22,9 @@ import java.net.Inet6Address
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.Socket
+import java.net.URL
+import java.net.URLEncoder
+import javax.net.ssl.HttpsURLConnection
 
 /**
  * The phone's side of the network: which network this is, what it lets through, and how hard FLUX
@@ -83,18 +86,40 @@ object FluxNet {
         sys.filterNot { Poison.isPoisoned(it) }.forEach { ip -> Family.ofLiteral(ip)?.let { out.putIfAbsent(it, ip) } }
         val poisoned = sys.any { Poison.isPoisoned(it) }
         if (out.size < 2 && (poisoned || out.isEmpty() || !out.containsKey(Family.V6))) {
-            val doh = runCatching { com.mlmvpn.scanner.engines.mae.probe.NetProber(context) }.getOrNull()
             for ((fam, type) in listOf(Family.V4 to 1, Family.V6 to 28)) {
                 if (out.containsKey(fam)) continue
                 // Only where it can matter: no answer at all, a poisoned one, or the v6 a
                 // v6 race needs. A clean v4-only answer is not second-guessed for v4.
-                val ip = runCatching { doh?.dohResolve(host, type) }.getOrNull().orEmpty()
+                val ip = runCatching { dohResolve(network, host, type) }.getOrDefault(emptyList())
                     .firstOrNull { Family.ofLiteral(it) == fam && !Poison.isPoisoned(it) }
                 if (ip != null) out[fam] = ip
             }
             if (poisoned) FluxLog.i("resolve: $host poisoned by the network resolver (${sys.joinToString()}); DoH gave ${out.values.joinToString().ifEmpty { "nothing" }}")
         }
         out
+    }
+
+    /** DNS-over-HTTPS by IP literal on the underlying network (no resolver hostname to filter). */
+    private fun dohResolve(network: Network?, host: String, type: Int): List<String> {
+        val endpoints = listOf("https://8.8.8.8/resolve", "https://8.8.4.4/resolve", "https://1.1.1.1/dns-query", "https://1.0.0.1/dns-query")
+        for (base in endpoints) {
+            val answers = runCatching {
+                val encoded = URLEncoder.encode(host, Charsets.UTF_8.name())
+                val url = URL("$base?name=$encoded&type=$type")
+                val connection = (network?.openConnection(url) ?: url.openConnection()) as HttpsURLConnection
+                connection.connectTimeout = 3000
+                connection.readTimeout = 3000
+                connection.setRequestProperty("accept", "application/dns-json")
+                connection.inputStream.bufferedReader().use { reader ->
+                    val answer = org.json.JSONObject(reader.readText()).optJSONArray("Answer") ?: return@runCatching emptyList<String>()
+                    (0 until answer.length()).map { answer.getJSONObject(it) }
+                        .filter { it.optInt("type") == type }
+                        .map { it.getString("data") }
+                }
+            }.getOrNull()
+            if (answers != null) return answers
+        }
+        return emptyList()
     }
 
     /**
