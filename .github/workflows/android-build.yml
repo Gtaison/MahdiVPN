@@ -46,6 +46,31 @@ jobs:
             exit 1
           fi
 
+      - name: Fetch pinned VPN engine AARs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p app/libs
+          curl -fL --retry 3 --retry-delay 2 \
+            https://github.com/2dust/AndroidLibXrayLite/releases/download/v26.11.9/libv2ray.aar \
+            -o app/libs/libv2ray.aar
+          echo "cdfef146218233a31a8b52c8b1016557730d3b63fc121d4c84cacea50e669155  app/libs/libv2ray.aar" | sha256sum -c -
+
+          curl -fL --retry 3 --retry-delay 2 \
+            https://raw.githubusercontent.com/Windscribe/Android-App/2c585dd5979ba93655853d56d849ed8ad2c964cb/base/src/main/libs/wsnet.aar \
+            -o app/libs/wsnet.aar
+          echo "5b0145d526aa10f6b7ec094639bfc8dc2f187d76d1b70915cf4da4802b822f11  app/libs/wsnet.aar" | sha256sum -c -
+
+          curl -fL --retry 3 --retry-delay 2 \
+            https://raw.githubusercontent.com/Psiphon-Labs/psiphon-tunnel-core-Android-library/v2.0.39/ca/psiphon/psiphontunnel/2.0.39/psiphontunnel-2.0.39.aar \
+            -o app/libs/psiphontunnel-2.0.39.aar
+          echo "e131f63e6c88e61d2cd9a0e5fc503ee4eda3f816  app/libs/psiphontunnel-2.0.39.aar" | sha1sum -c -
+          python3 scripts/repackage-psiphon-aar.py app/libs/psiphontunnel-2.0.39.aar
+          rm app/libs/psiphontunnel-2.0.39.aar
+          test -s app/libs/libv2ray.aar
+          test -s app/libs/wsnet.aar
+          test -s app/libs/psiphontunnel-2.0.39-ns.aar
+
       - name: Build debug APKs
         env:
           GRADLE_USER_HOME: ${{ runner.temp }}/gradle-home
