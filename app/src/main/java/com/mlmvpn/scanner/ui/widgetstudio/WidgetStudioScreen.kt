@@ -71,8 +71,6 @@ import com.mlmvpn.scanner.ui.settings.SettingsSectionHeader
 import com.mlmvpn.scanner.ui.settings.SettingsSlider
 import com.mlmvpn.scanner.ui.settings.SettingsTextRow
 import com.mlmvpn.scanner.ui.settings.SettingsToggle
-import com.mlmvpn.scanner.chat.MlmChat
-import com.mlmvpn.scanner.widget.GerehWidgets
 import com.mlmvpn.scanner.widget.MethodWidgets
 import com.mlmvpn.scanner.widget.WidgetConnect
 import com.mlmvpn.scanner.widget.WidgetFormat
@@ -261,7 +259,7 @@ fun WidgetStudioScreen(onBack: () -> Unit) {
         Page.ADD_METHOD -> AddMethodWidget(
             onBack = { page = Page.MAIN },
             onAdd = { m ->
-                val placed = if (m == MlmChat.TILE_ID) GerehWidgets.requestPin(context) else MethodWidgets.requestPin(context, m)
+                val placed = MethodWidgets.requestPin(context, m)
                 if (!placed) manualHelp = true
             },
         )
@@ -881,11 +879,7 @@ private fun AddMethodWidget(onBack: () -> Unit, onAdd: (String) -> Unit) {
             color = Ios.SecondaryLabel, fontSize = 13.sp, lineHeight = 21.sp, modifier = Modifier.padding(horizontal = 24.dp),
         )
         Spacer(Modifier.height(10.dp))
-        // Gereh is not a way of connecting, so it is not in the list below: its widget shows the
-        // unread messages and whether Gereh reaches anyone, and a tap opens it.
-        GerehWidgets.tile()?.let { gereh ->
-            SettingsSectionHeader(tr("پیام‌رسان", "Messenger"))
-            SettingsGroup {
+        SettingsGroup {
                 val count = remember { GerehWidgets.placedCount(context) }
                 Row(
                     modifier = Modifier.fillMaxWidth().clickable { onAdd(gereh.id) }.padding(horizontal = 16.dp, vertical = 8.dp),
