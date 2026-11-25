@@ -185,7 +185,7 @@ object AmzCarrier {
 
     /** Also Outline's Shadowsocks through WARP ([com.mlmvpn.scanner.engines.outline.OutlineCf]): same shape, same treatment. */
     fun isCarrierConfig(remarks: String?): Boolean =
-        remarks == REMARKS || remarks == com.mlmvpn.scanner.engines.outline.OutlineCf.REMARKS
+        remarks == REMARKS
 
     private val LAN = listOf("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "127.0.0.0/8", "169.254.0.0/16", "100.64.0.0/10")
     /** Iran's filtering answers hijacked connections from here (the block page): fail fast. */
@@ -313,7 +313,13 @@ object AmzCarrier {
             p.edit().putLong("own_fail", System.currentTimeMillis()).apply()
             return null
         }
-        val t = com.mlmvpn.scanner.engines.mae.egress.MaeWarp.parseToml(made.toml)
+        // The registration format parser belongs here: Amnezia still owns this WARP identity flow.
+        val t = made.toml.lineSequence().mapNotNull { line ->
+            val clean = line.substringBefore('#').trim()
+            val split = clean.indexOf('=')
+            if (split <= 0) null else clean.substring(0, split).trim() to
+                clean.substring(split + 1).trim().removeSurrounding("\"").removeSurrounding("'")
+        }.toMap()
         val key = t["wg_private_key"].orEmpty()
         val peer = t["wg_peer_public_key"].orEmpty()
         if (key.isBlank() || peer.isBlank()) { p.edit().putLong("own_fail", System.currentTimeMillis()).apply(); return null }
