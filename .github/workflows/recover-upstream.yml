@@ -68,7 +68,7 @@ jobs:
           SRC="$OUT/sources/com/mlmvpn/scanner"
           DEST="recovered/upstream-1.2.49"
           mkdir -p "$DEST"
-          for package in engines/argo engines/mami ui/argo ui/mami; do
+          for package in engines/argo engines/mami ui/argo ui/mami engines/fenix/arman ui/fenix; do
             test -d "$SRC/$package" || { echo "Missing decompiled package: $package"; exit 1; }
             mkdir -p "$DEST/$package"
             cp -a "$SRC/$package/." "$DEST/$package/"
@@ -77,6 +77,9 @@ jobs:
           test -s "$DEST/engines/mami/MamiEngine.java"
           test -s "$DEST/ui/argo/ArgoScreenKt.java"
           test -s "$DEST/ui/mami/MamiScreenKt.java"
+          test -s "$DEST/engines/fenix/arman/ArmanEngine.java"
+          test -s "$DEST/engines/fenix/arman/ArmanCore.java"
+          test -s "$DEST/ui/fenix/FenixArmanScreenKt.java"
           {
             echo "Source: official mlmvpn/mlmvpn_android v1.2.49 universal release APK"
             echo "Release: https://github.com/mlmvpn/mlmvpn_android/releases/tag/v1.2.49"
