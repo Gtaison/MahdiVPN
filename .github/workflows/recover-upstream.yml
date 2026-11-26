@@ -1,4 +1,4 @@
-name: Recover upstream Argo and Mami sources (read-only snapshot)
+name: Recover upstream Argo and Mami sources (isolated snapshot)
 
 on:
   push:
@@ -13,10 +13,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - name: Checkout isolated recovery branch
+      - name: Checkout feature baseline (without recovery workflow history)
         uses: actions/checkout@v4
         with:
-          ref: analysis/recover-mlm-1.2.49
+          ref: feature/lean-vpn-no-warp
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -115,6 +115,7 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "recovered-argo-mami-${GITHUB_RUN_ID}"
           git add recovered/upstream-1.2.49 recovered/upstream-1.2.49-jadx-raw
           git commit -m "Recover Argo and Mami sources and JADX fallback dumps from upstream 1.2.49 APK"
           git push origin "HEAD:refs/heads/recovered-argo-mami-${GITHUB_RUN_ID}"
