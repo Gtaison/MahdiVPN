@@ -1917,4 +1917,8 @@ public final class ArgoEngine {
         return tryOne(endpoint, mode, attempt, (wd.d) continuation);
     }
 
+    public final void recoveryStopService() {
+        stopService();
+    }
+
 }

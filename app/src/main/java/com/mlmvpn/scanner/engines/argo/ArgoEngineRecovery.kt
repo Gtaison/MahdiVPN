@@ -30,7 +30,7 @@ suspend fun recoverConnect(
             lastError = message
             engine.log("«${endpoint.host}» وصل نشد: $message")
             ArgoPoolRecoveryBridge.recordFailed(endpoint, message)
-            engine.stopService()
+            engine.recoveryStopService()
         }
     }
     engine.recoveryMarkFailed(lastError)
