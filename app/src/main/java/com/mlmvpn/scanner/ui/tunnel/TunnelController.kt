@@ -49,8 +49,6 @@ data class TunnelUiState(
     val speedRx: Long = 0L,
     /** 0..100 while connecting, or -1 when this status carries no measurable progress. */
     val progress: Int = -1,
-    /** False when the core was not bundled for this device's ABI. */
-    val engineAvailable: Boolean = TunnelEngine.isAvailable,
     /**
      * The WARP tile the user tapped when the service handed the connect to another member (MASQUE did
      * not come up in its budget, so WireGuard carries -- the same exit country). Its screen owns the
@@ -58,6 +56,9 @@ data class TunnelUiState(
      */
     val handedOverFrom: Transport? = null,
 ) {
+    /** Re-checks optional Store JNI libraries on every read; failed loads are retried safely. */
+    val engineAvailable: Boolean get() = TunnelEngine.isAvailable
+
     val isBusy: Boolean get() = stage == TunnelStage.STARTING || stage == TunnelStage.RUNNING
 }
 

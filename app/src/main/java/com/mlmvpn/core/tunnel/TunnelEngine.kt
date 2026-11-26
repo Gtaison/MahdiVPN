@@ -31,12 +31,45 @@ object TunnelEngine {
      * shim is what makes `external fun` resolve at all - loading only the core
      * would leave every call unresolved.
      */
-    val isAvailable: Boolean = runCatching {
-        // Through the store, which prefers a copy installed from «ام‌ال‌ام استور» and falls back
-        // to the shipped pair on any failure.
-        com.mlmvpn.scanner.store.StoreEngines.loadLibrary("tunnelcore", "tunnelcore")
-        com.mlmvpn.scanner.store.StoreEngines.loadLibrary("tunnelcore", "tunneljni")
-    }.isSuccess
+    @Volatile private var coreLoaded = false
+    @Volatile private var jniLoaded = false
+    @Volatile private var lastLoadAttemptNanos = 0L
+    private val loadLock = Any()
+
+    /**
+     * Retry after a failed lookup instead of caching a missing optional Store library forever.
+     *
+     * The Store can install the signed JNI pair while the process is alive. The old eager
+     * initializer ran once at process start, so a missing file made every dependent transport
+     * report "engine not included" until the app was force-stopped, even after installation.
+     * Keep successful loads cached, retry failed loads at a bounded rate, and remember each half
+     * independently so a missing JNI shim does not reload a core that is already resident.
+     */
+    val isAvailable: Boolean
+        get() {
+            if (coreLoaded && jniLoaded) return true
+            synchronized(loadLock) {
+                if (coreLoaded && jniLoaded) return true
+                val now = System.nanoTime()
+                if (now - lastLoadAttemptNanos < 1_000_000_000L) return false
+                lastLoadAttemptNanos = now
+                return try {
+                    // Through the store, which prefers a copy installed from «ام‌ال‌ام استور»
+                    // and falls back to the shipped pair on any failure.
+                    if (!coreLoaded) {
+                        com.mlmvpn.scanner.store.StoreEngines.loadLibrary("tunnelcore", "tunnelcore")
+                        coreLoaded = true
+                    }
+                    if (!jniLoaded) {
+                        com.mlmvpn.scanner.store.StoreEngines.loadLibrary("tunnelcore", "tunneljni")
+                        jniLoaded = true
+                    }
+                    true
+                } catch (_: Throwable) {
+                    false
+                }
+            }
+        }
 
     /** What the core reports after [prepare]: the addresses the tun must carry. */
     data class TunnelAddresses(
