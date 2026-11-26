@@ -77,6 +77,38 @@ jobs:
             find "$DEST" -type f -name '*.java' -printf '%P %s bytes\n' | sort
           } > "$DEST/PROVENANCE.txt"
 
+      - name: Dump JADX problem methods in simple and fallback modes
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="$RUNNER_TEMP/mlmvpn-1.2.49.apk"
+          J="$RUNNER_TEMP/jadx"
+          RAW="recovered/upstream-1.2.49-jadx-raw"
+          mkdir -p "$RAW"
+          classes=(
+            "com.mlmvpn.scanner.engines.argo.ArgoEngine"
+            "com.mlmvpn.scanner.engines.argo.ArgoPool"
+            "com.mlmvpn.scanner.engines.mami.MamiEngine"
+          )
+          for mode in simple fallback; do
+            for cls in "${classes[@]}"; do
+              out="$RAW/$mode/${cls##*.}.java"
+              mkdir -p "$(dirname "$out")"
+              set +e
+              "$J/bin/jadx" --no-res --show-bad-code --no-inline-anonymous --no-inline-methods \
+                --decompilation-mode "$mode" --single-class "$cls" \
+                --single-class-output "$out" "$APK" > "$RUNNER_TEMP/jadx-$mode.log" 2>&1
+              status=$?
+              set -e
+              echo "JADX $mode $cls exit=$status file=$(test -s "$out" && echo yes || echo no)"
+              if test -s "$out"; then
+                grep -nE "Method not decompiled|UnsupportedOperationException|JADX ERROR" "$out" | head -30 || true
+              fi
+            done
+          done
+          find "$RAW" -type f -size +0c -printf '%P %s bytes\n' | sort > "$RAW/INDEX.txt"
+          test -s "$RAW/INDEX.txt"
+
       - name: Commit recovery snapshot to isolated branch
         shell: bash
         run: |
@@ -85,4 +117,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add recovered/upstream-1.2.49
           git commit -m "Recover Argo and Mami source snapshot from upstream 1.2.49 APK"
+          git add recovered/upstream-1.2.49-jadx-raw
           git push origin "HEAD:refs/heads/recovered-argo-mami-${GITHUB_RUN_ID}"
