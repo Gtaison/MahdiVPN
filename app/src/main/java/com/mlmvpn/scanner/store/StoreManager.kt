@@ -556,16 +556,20 @@ object StoreManager {
         job to true
     }
 
-    /** Install only a missing executable, using the store's verified source and validation. */
+    /** Install only a missing engine library (EXEC or JNI), using the store's verified source and validation. */
     suspend fun ensureEngine(context: Context, id: String, lib: String) = withContext(Dispatchers.IO) {
         val item = requireNotNull(StoreCatalog.byId(id))
-        require(item.kind == StoreKind.ENGINE && item.engine?.mode == EngineSpec.Mode.EXEC)
+        require(item.kind == StoreKind.ENGINE && item.engine != null)
         require(lib in item.engine!!.libs)
         if (StoreEngines.available(context, id, lib)) return@withContext
         val (job, owned) = launchJob(context, id) { app ->
             if (StoreEngines.available(app, id, lib)) return@launchJob ""
             val candidate = resolve(app, item, null)
-                ?: throw StoreError(tr("نسخهٔ قابل نصب پیدا نشد", "No installable version found"))
+                ?: throw StoreError(
+                    if (item.source == StoreSource.Channel)
+                        tr("کانال امضاشدهٔ استور برای این موتور منتشر نشده است", "No signed Store channel version is available for this engine")
+                    else tr("نسخهٔ قابل نصب پیدا نشد", "No installable version found")
+                )
             currentCoroutineContext().ensureActive()
             installCandidate(app, item, candidate)
         }

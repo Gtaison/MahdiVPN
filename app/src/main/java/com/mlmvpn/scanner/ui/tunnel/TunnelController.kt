@@ -6,12 +6,14 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.widget.Toast
 import androidx.core.content.ContextCompat
 import com.mlmvpn.core.tunnel.CoreConfig
 import com.mlmvpn.core.tunnel.Tun2SocksManager
 import com.mlmvpn.core.tunnel.TunnelEngine
 import com.mlmvpn.core.tunnel.TunnelStatus
 import com.mlmvpn.core.tunnel.TunnelVpnService
+import com.mlmvpn.scanner.store.StoreManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -217,10 +219,37 @@ object TunnelController {
      */
     fun connect(context: Context, transport: Transport) {
         val app = context.applicationContext
-        _state.update {
-            it.copy(stage = TunnelStage.STARTING, message = null, active = transport, progress = -1)
-        }
+        val previous = _state.value
         scope.launch {
+            // The tunnel core is a signed Store JNI bundle, not a library shipped in the APK.
+            // Install it on demand before disturbing an already-running tunnel. This also gives
+            // the user the real Store-channel error instead of the old generic "engine missing"
+            // message. ensureEngine supports both EXEC and JNI artifacts.
+            if (transport.needsTunnelCore) {
+                try {
+                    StoreManager.ensureEngine(app, "tunnelcore", "libtunnelcore.so")
+                    StoreManager.ensureEngine(app, "tunnelcore", "libtunneljni.so")
+                    if (!TunnelEngine.isAvailable) {
+                        throw IllegalStateException("Tunnel core libraries were installed but could not be loaded")
+                    }
+                } catch (cancelled: java.util.concurrent.CancellationException) {
+                    throw cancelled
+                } catch (error: Exception) {
+                    val message = error.message ?: "The signed Store channel for the tunnel core is unavailable"
+                    _state.update { current ->
+                        if (previous.stage == TunnelStage.RUNNING) {
+                            current.copy(stage = TunnelStage.RUNNING, active = previous.active, message = message)
+                        } else {
+                            current.copy(message = message)
+                        }
+                    }
+                    Toast.makeText(app, message, Toast.LENGTH_LONG).show()
+                    return@launch
+                }
+            }
+            _state.update {
+                it.copy(stage = TunnelStage.STARTING, message = null, active = transport, progress = -1)
+            }
             // Nothing else may hold the device tun. See TunnelExclusion for why this is not a
             // no-op even when the two services look unrelated.
             TunnelExclusion.releaseForTunnelStack(app)

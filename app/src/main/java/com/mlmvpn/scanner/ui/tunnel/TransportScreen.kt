@@ -175,10 +175,6 @@ fun TransportScreen(
             Toast.makeText(context, S(R.string.this_route_was_not_built_for_this), Toast.LENGTH_LONG).show()
             return
         }
-        if (transport.needsTunnelCore && !state.engineAvailable) {
-            Toast.makeText(context, S(R.string.the_tunnel_core_for_this_device_was), Toast.LENGTH_LONG).show()
-            return
-        }
         transport.unavailableReason(context)?.let { reason ->
             Toast.makeText(context, reason, Toast.LENGTH_LONG).show()
             return
