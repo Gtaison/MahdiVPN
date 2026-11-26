@@ -18,15 +18,11 @@ ABIS = {
     "armeabi-v7a": 40,  # EM_ARM
 }
 CLASS_RENAMES = (
-    (b"go/Seq", b"ar/Seq"),
-    (b"go/Universe", b"ar/Universe"),
+    (b"go/", b"ar/"),
     (b"gojni", b"arjni"),
 )
 ELF_RENAMES = (
-    (b"Java_go_Seq_", b"Java_ar_Seq_"),
-    (b"Java_go_Universe_", b"Java_ar_Universe_"),
-    (b"go/Seq", b"ar/Seq"),
-    (b"go/Universe", b"ar/Universe"),
+    (b"Java_go_", b"Java_ar_"),
 )
 AAR_LIBS = {f"jni/{abi}/libgojni.so": f"jni/{abi}/libarjni.so" for abi in ABIS}
 
@@ -51,18 +47,16 @@ def rewrite_classes_jar(raw: bytes) -> bytes:
         names = set(source.namelist())
         if "mobile/Mobile.class" not in names:
             raise SystemExit("GoMobile AAR does not contain mobile/Mobile.class")
-        if "go/Seq.class" not in names or "go/Universe.class" not in names:
-            raise SystemExit("GoMobile AAR does not contain the expected go.Seq/go.Universe runtime")
+        if not {"go/Seq.class", "go/Universe.class", "go/error.class"} <= names:
+            raise SystemExit("GoMobile AAR does not contain the expected GoMobile runtime classes")
         for info in source.infolist():
             name = info.filename
             payload = source.read(info)
             if name.endswith(".class"):
                 for old_marker, new_marker in CLASS_RENAMES:
                     payload = payload.replace(old_marker, new_marker)
-            if name.startswith("go/Seq"):
-                name = "ar/Seq" + name[len("go/Seq"):]
-            elif name.startswith("go/Universe"):
-                name = "ar/Universe" + name[len("go/Universe"):]
+            if name.startswith("go/"):
+                name = "ar/" + name[len("go/"):]
             new_info = zipfile.ZipInfo(name, info.date_time)
             new_info.compress_type = info.compress_type
             new_info.comment = info.comment
@@ -73,12 +67,12 @@ def rewrite_classes_jar(raw: bytes) -> bytes:
     rewritten = out.getvalue()
     with zipfile.ZipFile(io.BytesIO(rewritten)) as check:
         names = set(check.namelist())
-        required = {"mobile/Mobile.class", "ar/Seq.class", "ar/Universe.class"}
+        required = {"mobile/Mobile.class", "ar/Seq.class", "ar/Universe.class", "ar/error.class"}
         missing = required - names
         if missing:
             raise SystemExit(f"repacked classes.jar missing: {sorted(missing)}")
-        if any(n.startswith(("go/Seq", "go/Universe")) for n in names):
-            raise SystemExit("repacked classes.jar still contains go.Seq/go.Universe")
+        if any(n.startswith("go/") for n in names):
+            raise SystemExit("repacked classes.jar still contains the go runtime package")
         for name in names:
             if name.endswith(".class"):
                 payload = check.read(name)
@@ -102,6 +96,10 @@ def main() -> None:
             elif name in AAR_LIBS:
                 abi = name.split("/")[1]
                 data = replace_required(data, ELF_RENAMES, name)
+                # JNI registration tables may carry package descriptors too. Remap them when present.
+                data = data.replace(b"go/", b"ar/")
+                if b"Java_go_" in data or b"go/" in data:
+                    raise SystemExit(f"{name}: old GoMobile runtime namespace remains")
                 if data[:4] != b"\x7fELF":
                     raise SystemExit(f"{name}: output is not ELF")
                 if data[4] != (2 if abi == "arm64-v8a" else 1):

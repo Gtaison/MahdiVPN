@@ -79,3 +79,7 @@
 # The native OpenVPN adapter calls these callbacks and JNI entry points by name.
 -keep class com.mlmvpn.scanner.openvpn.OpenVpnNative { *; }
 -keepclassmembers class com.mlmvpn.scanner.openvpn.OpenVpnService$Session { *; }
+
+# Arman GoMobile runtime uses JNI symbol names and must retain its package.
+-keep class ar.** { *; }
+-dontwarn ar.**

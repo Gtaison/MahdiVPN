@@ -19,11 +19,13 @@ Argo was incorrect.
 - License: GPL-3.0
 
 The stock GoMobile AAR names its runtime package `go` and library
-`libgojni.so`; MLMVPN 1.2.51 uses `ar.Seq`, `ar.Universe`, and
+`libgojni.so`; MLMVPN 1.2.51 uses the complete runtime package `ar`
+(including `ar.Seq`, `ar.Universe`, `ar.error`, and nested classes) and
 `libarjni.so`. The pinned post-processor
-`scripts/repackage-arman-gomobile-aar.py` remaps Java class references,
-library-load names, ELF JNI symbols and AAR entries using same-length
-replacements, and validates both ARM ABIs.
+`scripts/repackage-arman-gomobile-aar.py` remaps the entire runtime package,
+Java class references, library-load names, ELF JNI symbols and AAR entries
+using same-length replacements, and validates both ARM ABIs. This avoids
+collisions with the separate GoMobile runtime already bundled by Xray.
 
 ## TUN bridge
 

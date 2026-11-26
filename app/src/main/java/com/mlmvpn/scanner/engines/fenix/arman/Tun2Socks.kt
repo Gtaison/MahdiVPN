@@ -44,5 +44,8 @@ object Tun2Socks {
     }
 
     @Synchronized
+    fun running(): Boolean = device != null && TProxyIsRunning()
+
+    @Synchronized
     fun ended(): Boolean = device != null && !TProxyIsRunning()
 }

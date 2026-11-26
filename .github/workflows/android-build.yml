@@ -52,7 +52,7 @@ jobs:
           gzip -dc third_party/argo/argo-pool.json.gz > app/src/main/assets/argo/argo-pool.json
           echo "7712ca8c0ddf1aab957a3d24e75f01613034e7ab14d06a9650eab588333bec6c  app/src/main/assets/argo/argo-pool.json" | sha256sum -c -
 
-      - name: Build pinned Arman GoMobile JNI AAR (ARM64 + ARMv7)
+      - name: Build pinned Arman GoMobile JNI AAR (complete runtime namespace)
         shell: bash
         run: |
           set -euo pipefail
