@@ -57,7 +57,8 @@ def rewrite_classes_jar(raw: bytes) -> bytes:
             name = info.filename
             payload = source.read(info)
             if name.endswith(".class"):
-                payload = replace_required(payload, CLASS_RENAMES, name)
+                for old_marker, new_marker in CLASS_RENAMES:
+                    payload = payload.replace(old_marker, new_marker)
             if name.startswith("go/Seq"):
                 name = "ar/Seq" + name[len("go/Seq"):]
             elif name.startswith("go/Universe"):
@@ -78,6 +79,12 @@ def rewrite_classes_jar(raw: bytes) -> bytes:
             raise SystemExit(f"repacked classes.jar missing: {sorted(missing)}")
         if any(n.startswith(("go/Seq", "go/Universe")) for n in names):
             raise SystemExit("repacked classes.jar still contains go.Seq/go.Universe")
+        for name in names:
+            if name.endswith(".class"):
+                payload = check.read(name)
+                for old_marker, _ in CLASS_RENAMES:
+                    if old_marker in payload:
+                        raise SystemExit(f"repacked class still contains {old_marker!r}: {name}")
     return rewritten
 
 
