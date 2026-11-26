@@ -336,7 +336,6 @@ public final class MamiScreenKt {
             /* JADX WARN: Type inference failed for: r2v7, types: [boolean, int] */
             /* JADX WARN: Type inference failed for: r7v1, types: [androidx.compose.runtime.p0] */
             public final void invoke(SettingsGroupScope settingsGroupScope, o oVar, int i) {
-                ?? r4;
                 k2 k2Var;
                 k2 k2Var2;
                 ee.a aVar;
@@ -356,7 +355,8 @@ public final class MamiScreenKt {
                 final ee.a aVar2 = this.$ask;
                 final k2 k2Var3 = this.$serverTarget$delegate;
                 k2 k2Var4 = this.$note$delegate;
-                final ?? r8 = 0;
+                final int switchKey = 0;
+                boolean r8 = false;
                 int i11 = 0;
                 for (Object obj : list) {
                     int i12 = i11 + 1;
@@ -368,7 +368,7 @@ public final class MamiScreenKt {
                     long j = ((v) qVar.component1()).f3799a;
                     final String str = (String) qVar.component2();
                     boolean zBooleanValue = ((Boolean) qVar.component3()).booleanValue();
-                    ?? r10 = (p0) oVar2;
+                    p0 r10 = (p0) oVar2;
                     r10.e0(82583116);
                     if (i11 > 0) {
                         SettingsGroup.Separator(oVar2, i10 & 14);
@@ -388,7 +388,7 @@ public final class MamiScreenKt {
                             ee.a aVar3 = new ee.a() { // from class: com.mlmvpn.scanner.ui.mami.j
                                 @Override // ee.a
                                 public final Object invoke() {
-                                    switch (r8) {
+                                    switch (switchKey) {
                                         case 0:
                                             return MamiScreenKt.AnonymousClass4.AnonymousClass3.invoke$lambda$4$lambda$1$lambda$0((ee.a) aVar2, k2Var3);
                                         default:
@@ -400,14 +400,12 @@ public final class MamiScreenKt {
                             obj2 = aVar3;
                         }
                         r10.u(r8);
-                        r4 = r8 == true ? 1 : 0;
                         IosSettingsKt.m860SettingsActionRowXfSFWjk(strL, fVarE, j, null, false, false, false, (ee.a) obj2, oVar, 0, 120);
-                        r10.u(r4);
+                        r10.u(r8);
                         k2Var = k2Var5;
                         k2Var2 = k2Var3;
                         aVar = aVar2;
                     } else {
-                        r4 = r8;
                         ee.a aVar4 = aVar2;
                         k2 k2Var6 = k2Var3;
                         final k2 k2Var7 = k2Var4;
@@ -441,7 +439,6 @@ public final class MamiScreenKt {
                     }
                     SettingsGroup = settingsGroupScope;
                     oVar2 = oVar;
-                    r8 = r4;
                     i11 = i12;
                     aVar2 = aVar;
                     k2Var3 = k2Var2;
@@ -881,7 +878,7 @@ public final class MamiScreenKt {
             androidx.compose.ui.q qVar;
             Object obj;
             Ios ios;
-            ?? r13;
+            int r13;
             k2 k2Var;
             l4 l4Var;
             td.b bVarJ;
@@ -978,7 +975,7 @@ public final class MamiScreenKt {
                         qVar = qVar3;
                         obj = "hive";
                         ios = ios3;
-                        r13 = z10;
+                        r13 = 0;
                     } else {
                         float f12 = 8;
                         t tVarX = f0.x(com.mlmvpn.scanner.e.c(qVar3, f12, oVar2, qVar3, 1.0f), f10, 0.0f, 2);
