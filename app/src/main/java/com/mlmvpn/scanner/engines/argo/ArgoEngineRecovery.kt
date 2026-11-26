@@ -12,8 +12,7 @@ suspend fun recoverConnect(
     engine: ArgoEngine,
     selectedId: String?,
     rawConfig: String?,
-    mode: ArgoEngine.Mode?,
-    continuation: wd.d
+    mode: ArgoEngine.Mode?
 ): Any? {
     val pool = ArgoPool.INSTANCE
     val candidates: List<ArgoProtocol.Endpoint> = when {
