@@ -1144,13 +1144,19 @@ public final class ArgoEngine {
         	at jadx.core.dex.visitors.regions.RegionMakerVisitor.visit(RegionMakerVisitor.java:27)
         */
     public final java.lang.Object connect(java.lang.String r27, java.lang.String r28, com.mlmvpn.scanner.engines.argo.ArgoEngine.Mode r29, wd.d r30) {
-        /*
-            Method dump skipped, instruction units count: 314
-            To view this dump add '--comments-level debug' option
-        */
-        throw new UnsupportedOperationException("Method not decompiled: com.mlmvpn.scanner.engines.argo.ArgoEngine.connect(java.lang.String, java.lang.String, com.mlmvpn.scanner.engines.argo.ArgoEngine$Mode, wd.d):java.lang.Object");
+        return ArgoEngineRecoveryKt.recoverConnect(this, r27, r28, r29, r30);
     }
 
+    public final boolean recoveryShouldConnect() {
+        return wantConnected;
+    }
+
+    public final void recoveryMarkFailed(String message) {
+        if (wantConnected) {
+            ((g1) _conn).j(new Conn.Failed(message));
+            wantConnected = false;
+        }
+    }
     public static /* synthetic */ s1 connectAsync$default(ArgoEngine argoEngine, Context context, String str, String str2, Mode mode, int i, Object obj) {
         if ((i & 2) != 0) {
             str = null;
