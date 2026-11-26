@@ -50,7 +50,11 @@ jobs:
           set -euo pipefail
           APK="$RUNNER_TEMP/mlmvpn-1.2.49.apk"
           OUT="$RUNNER_TEMP/jadx-out"
+          set +e
           "$RUNNER_TEMP/jadx/bin/jadx" --no-res --show-bad-code -j 4 -d "$OUT" "$APK"
+          JADX_STATUS=$?
+          set -e
+          echo "JADX exit status: $JADX_STATUS (non-zero is tolerated only when required package sources are present)"
           SRC="$OUT/sources/com/mlmvpn/scanner"
           DEST="recovered/upstream-1.2.49"
           mkdir -p "$DEST"
