@@ -102,7 +102,7 @@ def main() -> None:
             elif name in AAR_LIBS:
                 abi = name.split("/")[1]
                 data = replace_required(data, ELF_RENAMES, name)
-                if data[:4] != b"\\x7fELF":
+                if data[:4] != b"\x7fELF":
                     raise SystemExit(f"{name}: output is not ELF")
                 if data[4] != (2 if abi == "arm64-v8a" else 1):
                     raise SystemExit(f"{name}: ELF class does not match {abi}")
