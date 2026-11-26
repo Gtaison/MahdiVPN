@@ -36,6 +36,9 @@ need_dex_class() {
 need_file "assets/argo/argo-pool.json"
 need_file "assets/mami/catalog-bootstrap.json"
 need_file "lib/$ABI/libarjni.so"
+need_dex_class 'Lmobile/Mobile;'
+need_dex_class 'Lar/Seq;'
+need_dex_class 'Lar/Universe;'
 need_dex_class 'Lcom/mlmvpn/scanner/engines/argo/ArgoEngine;'
 need_dex_class 'Lcom/mlmvpn/scanner/ui/argo/ArgoScreenKt;'
 need_dex_class 'Lcom/mlmvpn/scanner/engines/mami/MamiEngine;'
