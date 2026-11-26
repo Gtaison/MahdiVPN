@@ -3616,7 +3616,7 @@ public final class ArgoPool {
     private ArgoPool() {
     }
 
-    private final Absorbed absorbText(String str, String str2, long j, boolean z10, boolean z11) {
+    final Absorbed absorbText(String str, String str2, long j, boolean z10, boolean z11) {
         Iterator<String> it = ArgoProtocol.INSTANCE.extractBridgeBlocks(str).iterator();
         int i = 0;
         int i10 = 0;
@@ -3929,13 +3929,7 @@ public final class ArgoPool {
         	at jadx.core.dex.attributes.nodes.NotificationAttrNode.addError(NotificationAttrNode.java:19)
         */
     public final java.lang.Object harvestTelegram(com.mlmvpn.scanner.engines.argo.ArgoPool.Source r29, int r30, com.mlmvpn.scanner.engines.argo.ArgoNet.Route r31, ee.e r32, ee.a r33, wd.d r34) {
-        /*
-            Method dump skipped, instruction units count: 655
-            To view this dump add '--comments-level debug' option
-        */
-        throw new UnsupportedOperationException("Method not decompiled: com.mlmvpn.scanner.engines.argo.ArgoPool.harvestTelegram(com.mlmvpn.scanner.engines.argo.ArgoPool$Source, int, com.mlmvpn.scanner.engines.argo.ArgoNet$Route, ee.e, ee.a, wd.d):java.lang.Object");
-    }
-
+        return ArgoTelegramRecoveryKt.recoverHarvestTelegram(this, r29, r30, r31, r32, r33, r34);
     /* JADX INFO: Access modifiers changed from: private */
     public static final CharSequence harvestTelegram$lambda$47(String line) {
         j.e(line, "line");
@@ -5116,7 +5110,7 @@ public final class ArgoPool {
 
     /* JADX WARN: Code duplicated, block: B:34:0x00e7  */
     /* JADX WARN: Multi-variable type inference failed */
-    private final Page telegramPage(String str, Long l6, ArgoNet.Route route) throws UnsupportedEncodingException {
+    final Page telegramPage(String str, Long l6, ArgoNet.Route route) throws UnsupportedEncodingException {
         String str2;
         Long lW0;
         long jLongValue;
@@ -5200,13 +5194,7 @@ public final class ArgoPool {
         	at jadx.core.dex.attributes.nodes.NotificationAttrNode.addError(NotificationAttrNode.java:19)
         */
     public final java.lang.Object telegramPageRetry(java.lang.String r19, java.lang.Long r20, com.mlmvpn.scanner.engines.argo.ArgoNet.Route r21, ee.a r22, wd.d r23) {
-        /*
-            Method dump skipped, instruction units count: 235
-            To view this dump add '--comments-level debug' option
-        */
-        throw new UnsupportedOperationException("Method not decompiled: com.mlmvpn.scanner.engines.argo.ArgoPool.telegramPageRetry(java.lang.String, java.lang.Long, com.mlmvpn.scanner.engines.argo.ArgoNet$Route, ee.a, wd.d):java.lang.Object");
-    }
-
+        return ArgoTelegramRecoveryKt.recoverTelegramPageRetry(this, r19, r20, r21, r22, r23);
     /* JADX WARN: Multi-variable type inference failed */
     public static /* synthetic */ void test$default(ArgoPool argoPool, String str, String str2, List list, boolean z10, boolean z11, boolean z12, int i, Object obj) {
         if ((i & 1) != 0) {
