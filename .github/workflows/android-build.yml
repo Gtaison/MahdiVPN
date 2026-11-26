@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/lean-vpn-no-warp
+      - test/argo-mami-compile-1249
   workflow_dispatch:
 
 concurrency:
