@@ -35,8 +35,11 @@ need_dex_class() {
 # and Argo's JNI backend must travel with the app, not be assumed to exist elsewhere.
 need_file "assets/argo/argo-pool.json"
 need_file "assets/mami/catalog-bootstrap.json"
+# Arman GoMobile backend (not the Argo engine).
 need_file "lib/$ABI/libarjni.so"
+need_file "lib/$ABI/libhev-socks5-tunnel.so"
 need_dex_class 'Lmobile/Mobile;'
+need_dex_class 'Lcom/mlmvpn/scanner/engines/fenix/arman/Tun2Socks;'
 need_dex_class 'Lar/Seq;'
 need_dex_class 'Lar/Universe;'
 need_dex_class 'Lcom/mlmvpn/scanner/engines/argo/ArgoEngine;'

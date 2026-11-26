@@ -38,7 +38,7 @@ jobs:
           yes | sdkmanager --licenses >/dev/null
           sdkmanager "platforms;android-36" "build-tools;35.0.0" "platform-tools" "ndk;27.2.12479018" "cmake;3.22.1"
 
-      - name: Set up Go for the pinned Argo JNI backend
+      - name: Set up Go for the pinned Arman JNI backend
         uses: actions/setup-go@v6
         with:
           go-version: '1.27.3'
@@ -52,7 +52,7 @@ jobs:
           gzip -dc third_party/argo/argo-pool.json.gz > app/src/main/assets/argo/argo-pool.json
           echo "7712ca8c0ddf1aab957a3d24e75f01613034e7ab14d06a9650eab588333bec6c  app/src/main/assets/argo/argo-pool.json" | sha256sum -c -
 
-      - name: Build pinned Argo GoMobile JNI AAR
+      - name: Build pinned Arman GoMobile JNI AAR
         shell: bash
         run: |
           set -euo pipefail
@@ -68,9 +68,38 @@ jobs:
           export PATH="$(go env GOPATH)/bin:$PATH"
           gomobile init
           cd "$SRC/core"
-          gomobile bind -target=android/arm,android/arm64 -androidapi 24 -o "$RUNNER_TEMP/argo-core.aar" ./mobile
+          gomobile bind -target=android/arm,android/arm64 -androidapi 24 -o "$RUNNER_TEMP/arman-core.aar" ./mobile
 
-          python3 scripts/repackage-argo-gomobile-aar.py "$RUNNER_TEMP/argo-core.aar" app/libs/argo-core.aar
+          python3 "$GITHUB_WORKSPACE/scripts/repackage-arman-gomobile-aar.py" "$RUNNER_TEMP/arman-core.aar" "$GITHUB_WORKSPACE/app/libs/arman-core.aar"
+      - name: Build Arman hev-socks5-tunnel JNI library
+        shell: bash
+        run: |
+          set -euo pipefail
+          SRC="$RUNNER_TEMP/arman-vpn-client"
+          NDK="$ANDROID_HOME/ndk/27.2.12479018"
+          "$NDK/ndk-build" \
+            NDK_PROJECT_PATH="$SRC/app/android/hev-socks5-tunnel" \
+            APP_BUILD_SCRIPT="$SRC/app/android/hev-socks5-tunnel/Android.mk" \
+            NDK_APPLICATION_MK="$SRC/app/android/hev-socks5-tunnel/Application.mk" \
+            APP_ABI="arm64-v8a armeabi-v7a" \
+            APP_PLATFORM=android-24 \
+            APP_OPTIM=release \
+            APP_CFLAGS="-O3 -DPKGNAME=com/mlmvpn/scanner/engines/fenix/arman -DCLSNAME=Tun2Socks" \
+            APP_SUPPORT_FLEXIBLE_PAGE_SIZES=true \
+            REV_ID=2.19.3 \
+            NDK_OUT="$RUNNER_TEMP/hev-obj" \
+            NDK_LIBS_OUT="$RUNNER_TEMP/hev-libs"
+
+          for abi in arm64-v8a armeabi-v7a; do
+            src="$RUNNER_TEMP/hev-libs/$abi/libhev-socks5-tunnel.so"
+            dst="$GITHUB_WORKSPACE/app/src/main/jniLibs/$abi/libhev-socks5-tunnel.so"
+            test -s "$src"
+            mkdir -p "$(dirname "$dst")"
+            cp "$src" "$dst"
+            strings -a "$dst" | grep -Fq 'com/mlmvpn/scanner/engines/fenix/arman/Tun2Socks'
+            readelf -h "$dst" | grep -q 'Machine:'
+          done
+
 
       - name: Remove Windows-only local JDK settings from CI checkout
         run: |
