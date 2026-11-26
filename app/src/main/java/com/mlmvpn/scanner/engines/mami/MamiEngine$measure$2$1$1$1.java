@@ -80,8 +80,8 @@ public final class MamiEngine$measure$2$1$1$1 extends j implements ee.e {
     @Override // xd.a
     public final Object invokeSuspend(Object obj) {
         Object objM1004constructorimpl;
-        ?? r4;
-        ?? r8;
+        ConcurrentHashMap<String, Long> r4;
+        String r8;
         Long l6;
         long jLongValue;
         ConcurrentHashMap<String, Long> concurrentHashMap;
@@ -101,9 +101,9 @@ public final class MamiEngine$measure$2$1$1$1 extends j implements ee.e {
         long jLongValue2;
         kotlin.coroutines.intrinsics.a aVar = kotlin.coroutines.intrinsics.a.COROUTINE_SUSPENDED;
         int i = this.label;
-        ?? r10 = 3;
-        ?? r11 = 2;
-        ?? r12 = 1;
+        String r10;
+        ConcurrentHashMap<String, Long> r11;
+        kotlinx.coroutines.sync.h r12;
         try {
             try {
                 if (i == 0) {

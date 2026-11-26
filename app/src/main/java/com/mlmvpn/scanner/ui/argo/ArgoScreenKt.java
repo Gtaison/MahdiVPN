@@ -1853,7 +1853,6 @@ public final class ArgoScreenKt {
             androidx.compose.ui.node.m mVar2;
             e2 e2Var2;
             androidx.compose.ui.q qVar;
-            ?? r4;
             k2 k2Var3;
             k2 k2Var4;
             k2 k2Var5;
@@ -3708,12 +3707,12 @@ public final class ArgoScreenKt {
             public final void invoke(SettingsGroupScope SettingsGroup, androidx.compose.runtime.o oVar, int i) {
                 int i10;
                 androidx.compose.runtime.o oVar2;
-                ?? r4;
+                androidx.compose.runtime.p0 r4;
                 String str;
                 long jMsTone;
                 String strP;
                 boolean z10;
-                ?? r11;
+                ee.a r11;
                 kotlin.jvm.internal.j.e(SettingsGroup, "$this$SettingsGroup");
                 if ((i & 6) == 0) {
                     i10 = i | ((i & 8) == 0 ? ((p0) oVar).f(SettingsGroup) : ((p0) oVar).h(SettingsGroup) ? 4 : 2);
@@ -3738,7 +3737,7 @@ public final class ArgoScreenKt {
                     oVar2 = oVar;
                     r4 = p0Var2;
                 }
-                ?? r8 = 0;
+                int r8 = 0;
                 r4.u(false);
                 r4.e0(487974529);
                 List<ArgoPool.Row> list = this.$best;
@@ -3751,7 +3750,7 @@ public final class ArgoScreenKt {
                     boolean zHasNext = it.hasNext();
                     e2 e2Var = androidx.compose.runtime.n.f3284a;
                     if (!zHasNext) {
-                        ?? r10 = r8;
+                        boolean r10 = false;
                         r4.u(r10);
                         SettingsGroup.Separator(oVar2, i10 & 14);
                         String strTr = StoreNetKt.tr("پل\u200cها و فالکن\u200cها", "Bridges and falcons");
@@ -3785,7 +3784,7 @@ public final class ArgoScreenKt {
                     if (i11 > 0) {
                         SettingsGroup.Separator(oVar2, i10 & 14);
                     }
-                    r4.u(r8);
+                    r4.u(false);
                     String strL = f0.a.l(ArgoScreenKt.flag(row.getCc()), "  ", row.getHost());
                     androidx.compose.ui.graphics.vector.f fVarR = z11 ? fc.a.r() : hb.a.y();
                     if (z11) {
@@ -3810,7 +3809,7 @@ public final class ArgoScreenKt {
                     String strF0 = kotlin.collections.q.F0(kotlin.collections.o.b0(new String[]{strP, ArgoScreenKt.kindOne(row.getKind()), ArgoScreenKt.country(row.getCc()), (i11 != 0 || z11) ? str : StoreNetKt.tr("سریع\u200cترین", "fastest")}), " · ", null, null, null, 62);
                     r4.e0(487993065);
                     if (z12) {
-                        r11 = str;
+                        r11 = null;
                         z10 = false;
                     } else {
                         r4.e0(1755685676);
@@ -3828,7 +3827,7 @@ public final class ArgoScreenKt {
                     }
                     r4.u(z10);
                     IosSettingsKt.m863SettingsRowqhMrWXk(strL, fVarR, jMsTone, null, strF0, 0L, false, r11, 0, oVar2, 0, 360);
-                    r8 = z10;
+                    r8 = z10 ? 1 : 0;
                     i11 = i12;
                     z11 = z11;
                     z12 = z12;
@@ -10178,7 +10177,7 @@ public final class ArgoScreenKt {
         androidx.compose.ui.node.p pVar;
         androidx.compose.ui.node.m mVar;
         int i11;
-        final ?? r4;
+        final int r4;
         int i12;
         boolean z10;
         final RowCtx rowCtx2;
@@ -10411,7 +10410,7 @@ public final class ArgoScreenKt {
                     z10 = false;
                     row2 = row;
                     rowCtx2 = rowCtx;
-                    final ?? r14 = 0 == true ? 1 : 0;
+                    final int r14 = 0 == true ? 1 : 0;
                     objI = new ee.a() { // from class: com.mlmvpn.scanner.ui.argo.h
                         @Override // ee.a
                         public final Object invoke() {
@@ -10437,7 +10436,7 @@ public final class ArgoScreenKt {
             androidx.compose.ui.graphics.vector.f fVarX = com.google.android.gms.internal.auth.j.x();
             boolean z13 = !rowCtx2.getTesting();
             p0Var.e0(-1327529039);
-            ?? r8 = ((i14 & 14) == 4 ? r4 : 0) | ((i14 & 112) == i12 ? r4 : 0);
+            int r8 = ((i14 & 14) == 4 ? r4 : 0) | ((i14 & 112) == i12 ? r4 : 0);
             Object objI2 = p0Var.I();
             if (r8 != 0 || objI2 == e2Var) {
                 objI2 = new ee.a() { // from class: com.mlmvpn.scanner.ui.argo.h

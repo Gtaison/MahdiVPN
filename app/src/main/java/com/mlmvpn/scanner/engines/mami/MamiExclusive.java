@@ -874,7 +874,7 @@ public final class MamiExclusive {
             } else if (!(json instanceof sf.c) && !(json instanceof sf.a)) {
                 json = cVar;
             }
-            ?? arrayList = w.INSTANCE;
+            List arrayList = w.INSTANCE;
             try {
                 Object json2 = mamiJs2.get(obj, "profiles");
                 if (json2 instanceof String) {

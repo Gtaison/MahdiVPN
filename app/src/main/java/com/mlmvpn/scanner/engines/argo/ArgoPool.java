@@ -3951,11 +3951,11 @@ public final class ArgoPool {
     /* JADX WARN: Type inference failed for: r2v14, types: [java.util.ArrayList] */
     /* JADX WARN: Type inference failed for: r2v2 */
     public final int harvestUrl(Source source, ArgoNet.Route route, ee.a aVar) {
-        ?? r14;
+        List<String> r14;
         Object objM1004constructorimpl;
         ArgoPool argoPool = this;
         String str = (String) q.y0(source.getValue());
-        ?? B = m9.d.B(argoPool.githubRaw(str));
+        List<String> B = (List<String>) m9.d.B(argoPool.githubRaw(str));
         kotlin.text.m mVar = kotlin.text.m.IGNORE_CASE;
         kotlin.text.g gVarFind$default = l.find$default(new l("^https?://github\\.com/([^/]+)/([^/#?]+)/?$", mVar), str, 0, 2, null);
         kotlin.text.g gVarFind$default2 = l.find$default(new l("^https?://github\\.com/([^/]+)/([^/#?]+)/(issues|discussions)", mVar), str, 0, 2, null);
@@ -6144,7 +6144,7 @@ public final class ArgoPool {
         int i14;
         long jMax;
         List listB1;
-        ?? arrayList;
+        List<CleanIp> arrayList;
         sf.a aVarV;
         try {
             load();
@@ -6213,7 +6213,7 @@ public final class ArgoPool {
             listB1 = q.b1(collectionValues, p.d(new d(6), new d(7), new d(8)));
             sf.c cVar = cleanScan;
             if (cVar == null || (aVarV = cVar.v("list")) == null) {
-                arrayList = 0;
+                arrayList = null;
             } else {
                 h hVarJ = com.google.android.gms.internal.mlkit_language_id_common.j.J(0, aVarV.f67155a.size());
                 ArrayList arrayList2 = new ArrayList();
@@ -6246,7 +6246,7 @@ public final class ArgoPool {
                     j = 0;
                 }
             }
-            if (arrayList == 0) {
+            if (arrayList == null) {
                 arrayList = kotlin.collections.w.INSTANCE;
             }
         } catch (Throwable th2) {

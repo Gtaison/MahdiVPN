@@ -5925,7 +5925,7 @@ public final class MamiEngine {
         C06241 c06241;
         MamiEngine mamiEngine;
         PlaceRow placeRow2;
-        ?? r8;
+        boolean r8;
         Iterator<Cand> it;
         C06241 c06242;
         MamiEngine mamiEngine2;
@@ -5935,7 +5935,7 @@ public final class MamiEngine {
         PlaceRow placeRow3;
         final Cand next;
         String str;
-        ?? r10;
+        boolean r10;
         MamiEngine mamiEngine3;
         PlaceRow placeRow4;
         oe.e eVar;
@@ -5944,15 +5944,15 @@ public final class MamiEngine {
         PlaceRow placeRow5;
         MamiEngine mamiEngine4;
         Mode mode5;
-        ?? r11;
-        ?? r12;
+        boolean r11;
+        boolean r12;
         String str2;
-        ?? r13;
+        boolean r13;
         String strConfig;
         Object objLaunch;
         oe.e eVar2;
         AnonymousClass5 anonymousClass5;
-        ?? r14;
+        boolean r14;
         Mode mode6;
         if (dVar instanceof C06241) {
             c06241 = (C06241) dVar;
@@ -5971,7 +5971,7 @@ public final class MamiEngine {
         Object objVerify = c06241.result;
         kotlin.coroutines.intrinsics.a aVar = kotlin.coroutines.intrinsics.a.COROUTINE_SUSPENDED;
         int i10 = c06241.label;
-        ?? r15 = 4;
+        int r15 = 4;
         int i11 = 1;
         wd.d dVar2 = null;
         if (i10 == 0) {
@@ -5998,7 +5998,7 @@ public final class MamiEngine {
                     return MamiEngine.tryServers$lambda$70(next, jVar, (MamiEngine.Status) obj);
                 }
             });
-            if (r8 != 0) {
+            if (r8) {
                 eVar = v0.f24208c;
                 c06253 = new C06253(next, placeRow2, dVar2);
                 c06242.L$0 = mamiEngine2;
@@ -6094,7 +6094,7 @@ public final class MamiEngine {
             } else {
                 mode5 = mode2;
                 c06241 = c06242;
-                r11 = r8 == true ? 1 : 0;
+                r11 = r8;
                 mamiEngine3 = mamiEngine2;
                 placeRow4 = placeRow2;
                 i10 = 0;
@@ -6186,7 +6186,7 @@ public final class MamiEngine {
                 placeRow4 = placeRow5;
                 mamiEngine3 = mamiEngine4;
                 r15 = z11;
-                ?? r16 = r15;
+                int r16 = r15;
                 if (i10 != 0) {
                     mamiEngine3.stopService();
                 }
@@ -6378,13 +6378,13 @@ public final class MamiEngine {
                     r10 = r12;
                 } catch (Throwable th4) {
                     th2 = th4;
-                    ?? r17 = r12;
+                    boolean r17 = r12;
                     c06242 = c06241;
                     mode2 = mode3;
                     mamiEngine3 = mamiEngine3;
                     r15 = r17 == true ? 1 : 0;
                     placeRow4 = placeRow3;
-                    ?? r18 = r15;
+                    int r18 = r15;
                     if (i10 != 0) {
                         mamiEngine3.stopService();
                     }
@@ -6397,7 +6397,7 @@ public final class MamiEngine {
             th2 = th5;
             c06242 = c06241;
             mode2 = mode6;
-            ?? r19 = r15;
+            int r19 = r15;
             if (i10 != 0) {
                 mamiEngine3.stopService();
             }
@@ -6405,7 +6405,7 @@ public final class MamiEngine {
             }
             throw th2;
         }
-        ?? r110 = r15;
+        int r110 = r15;
         if (i10 != 0) {
             mamiEngine3.stopService();
         }
@@ -6418,7 +6418,7 @@ public final class MamiEngine {
         mamiEngine2 = mamiEngine3;
         i11 = 1;
         dVar2 = null;
-        r8 = r110;
+        r8 = r110 != 0;
         if (it.hasNext()) {
             if (th2 == null) {
                 throw new IllegalStateException("وصل نشد");
