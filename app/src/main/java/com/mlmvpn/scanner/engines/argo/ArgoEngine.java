@@ -1913,4 +1913,8 @@ public final class ArgoEngine {
         g1 g1Var = (g1) _logs;
         g1Var.j(q.e1(q.S0(m9.d.B(strG), (Iterable) g1Var.getValue()), 300));
     }
+    public final Object recoveryTryOne(ArgoProtocol.Endpoint endpoint, Mode mode, int attempt, kotlin.coroutines.Continuation<?> continuation) throws Throwable {
+        return tryOne(endpoint, mode, attempt, (wd.d) continuation);
+    }
+
 }
