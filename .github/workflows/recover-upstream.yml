@@ -24,14 +24,24 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Fetch official upstream 1.2.49 universal APK
+      - name: Fetch exact user-provided MLMVPN 1.2.51 APK (SHA-256 pinned)
         shell: bash
         run: |
           set -euo pipefail
-          curl -fL --retry 3 --retry-delay 2 \
-            https://github.com/mlmvpn/mlmvpn_android/releases/download/v1.2.49/mlmvpn-1.2.49-universal-release.apk \
-            -o "$RUNNER_TEMP/mlmvpn-1.2.49.apk"
-          unzip -l "$RUNNER_TEMP/mlmvpn-1.2.49.apk" | grep -q 'classes.dex'
+          APK="$RUNNER_TEMP/mlmvpn-1.2.51.apk"
+          # Public download link from the Telegram post carrying the same 1.2.51 APK
+          # previously supplied for this task. Never trust the host without hash verification.
+          if curl -fL --retry 2 --retry-delay 2 \
+              https://guardts.ir/f/07cb9d50fb02 -o "$APK" &&
+              echo "b2d2d0672b5bcfc1e79d3569650d087f8e55011db3f7fc46575b5bc5843e1cdf  $APK" | sha256sum -c -; then
+            echo "Using exact MLMVPN 1.2.51 APK; checksum matches the previously supplied file."
+          else
+            echo "::warning::Could not retrieve the pinned 1.2.51 APK; using official 1.2.49 only as a fallback for source reconnaissance."
+            curl -fL --retry 3 --retry-delay 2 \
+              https://github.com/mlmvpn/mlmvpn_android/releases/download/v1.2.49/mlmvpn-1.2.49-universal-release.apk \
+              -o "$APK"
+          fi
+          unzip -l "$APK" | grep -q 'classes.dex'
 
       - name: Fetch JADX
         shell: bash
@@ -48,7 +58,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          APK="$RUNNER_TEMP/mlmvpn-1.2.49.apk"
+          APK="$RUNNER_TEMP/mlmvpn-1.2.51.apk"
           OUT="$RUNNER_TEMP/jadx-out"
           set +e
           "$RUNNER_TEMP/jadx/bin/jadx" --no-res --show-bad-code -j 4 -d "$OUT" "$APK"
