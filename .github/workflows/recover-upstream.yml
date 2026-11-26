@@ -1,0 +1,83 @@
+name: Recover upstream Argo and Mami sources (read-only snapshot)
+
+on:
+  push:
+    branches:
+      - analysis/recover-mlm-1.2.49
+
+permissions:
+  contents: write
+
+jobs:
+  decompile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout isolated recovery branch
+        uses: actions/checkout@v4
+        with:
+          ref: analysis/recover-mlm-1.2.49
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Fetch official upstream 1.2.49 universal APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 --retry-delay 2 \
+            https://github.com/mlmvpn/mlmvpn_android/releases/download/v1.2.49/mlmvpn-1.2.49-universal-release.apk \
+            -o "$RUNNER_TEMP/mlmvpn-1.2.49.apk"
+          unzip -l "$RUNNER_TEMP/mlmvpn-1.2.49.apk" | grep -q 'classes.dex'
+
+      - name: Fetch JADX
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 --retry-delay 2 \
+            https://github.com/skylot/jadx/releases/download/v1.5.7/jadx-1.5.7.zip \
+            -o "$RUNNER_TEMP/jadx.zip"
+          mkdir -p "$RUNNER_TEMP/jadx"
+          unzip -q "$RUNNER_TEMP/jadx.zip" -d "$RUNNER_TEMP/jadx"
+          test -x "$RUNNER_TEMP/jadx/bin/jadx"
+
+      - name: Decompile and isolate original engine and UI packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="$RUNNER_TEMP/mlmvpn-1.2.49.apk"
+          OUT="$RUNNER_TEMP/jadx-out"
+          "$RUNNER_TEMP/jadx/bin/jadx" --no-res --show-bad-code -j 4 -d "$OUT" "$APK"
+          SRC="$OUT/sources/com/mlmvpn/scanner"
+          DEST="recovered/upstream-1.2.49"
+          mkdir -p "$DEST"
+          for package in engines/argo engines/mami ui/argo ui/mami; do
+            test -d "$SRC/$package" || { echo "Missing decompiled package: $package"; exit 1; }
+            mkdir -p "$DEST/$package"
+            cp -a "$SRC/$package/." "$DEST/$package/"
+          done
+          test -s "$DEST/engines/argo/ArgoEngine.java"
+          test -s "$DEST/engines/mami/MamiEngine.java"
+          test -s "$DEST/ui/argo/ArgoScreenKt.java"
+          test -s "$DEST/ui/mami/MamiScreenKt.java"
+          {
+            echo "Source: official mlmvpn/mlmvpn_android v1.2.49 universal release APK"
+            echo "Release: https://github.com/mlmvpn/mlmvpn_android/releases/tag/v1.2.49"
+            echo "Decompiler: JADX v1.5.7"
+            echo "This is a GPL-3.0-derived recovery snapshot. Preserve the upstream attribution required by the source repository's license."
+            echo
+            find "$DEST" -type f -name '*.java' -printf '%P %s bytes\n' | sort
+          } > "$DEST/PROVENANCE.txt"
+
+      - name: Commit recovery snapshot to isolated branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add recovered/upstream-1.2.49
+          git commit -m "Recover Argo and Mami source snapshot from upstream 1.2.49 APK"
+          git push origin HEAD:analysis/recover-mlm-1.2.49
