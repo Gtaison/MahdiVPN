@@ -24,37 +24,15 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Fetch and verify the exact MLMVPN 1.2.51 DEX payload
+      - name: Fetch official upstream 1.2.49 universal APK
         shell: bash
         run: |
           set -euo pipefail
-          APK="$RUNNER_TEMP/mlmvpn-1.2.51.apk"
-          curl -fL --retry 3 --retry-delay 2 https://guardts.ir/f/07cb9d50fb02 -o "$APK"
-          # The outer APK may be re-signed/repacked by the mirror. Accept it only if
-          # every DEX byte-for-byte matches the previously supplied 1.2.51 APK.
-          python3 - "$APK" <<'PY'
-          import hashlib, pathlib, sys, zipfile
-          apk = pathlib.Path(sys.argv[1])
-          expected = {
-              "classes.dex": "37982383885be7804d517627930ad76e90e6c039803f3de2b131836d08c04904",
-              "classes2.dex": "0580e7587ef60731aac18f6fd16c5fee9f91e0e4f335ca498417991de903774e",
-              "classes3.dex": "cf187b32d8d359397158dc380ef1e43beb40facd4565eb70eb811abb7db0f281",
-              "classes4.dex": "710bf93531611a47ba80c8ce66d2ad58e737be6c78428b451acabe185d1af24f",
-              "classes5.dex": "acd40daeaba7c81de1ef438609d78b572a6dd67ee4643eb72761a38fdfb368c5",
-              "classes6.dex": "7eb2eefeed2d856cdda601a6d16c76c1bd43033a2f4de68561fc3e8c528a5ab2",
-          }
-          with zipfile.ZipFile(apk) as z:
-              names = set(z.namelist())
-              for name, digest in expected.items():
-                  if name not in names:
-                      raise SystemExit(f"APK is not the supplied 1.2.51 DEX set: missing {name}")
-                  actual = hashlib.sha256(z.read(name)).hexdigest()
-                  print(f"{name}: {actual}")
-                  if actual != digest:
-                      raise SystemExit(f"DEX mismatch for {name}; refusing to decompile another build")
-          print("All six DEX files exactly match the previously supplied MLMVPN 1.2.51 APK.")
-          PY
-          echo "APK_SOURCE=MLMVPN-1.2.51-DexVerified" >> "$GITHUB_ENV"
+          curl -fL --retry 3 --retry-delay 2 \
+            https://github.com/mlmvpn/mlmvpn_android/releases/download/v1.2.49/mlmvpn-1.2.49-universal-release.apk \
+            -o "$RUNNER_TEMP/mlmvpn-1.2.49.apk"
+          unzip -l "$RUNNER_TEMP/mlmvpn-1.2.49.apk" | grep -q 'classes.dex'
+          echo "APK_SOURCE=official-MLMVPN-1.2.49" >> "$GITHUB_ENV"
 
       - name: Fetch JADX
         shell: bash
@@ -71,7 +49,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          APK="$RUNNER_TEMP/mlmvpn-1.2.51.apk"
+          APK="$RUNNER_TEMP/mlmvpn-1.2.49.apk"
           OUT="$RUNNER_TEMP/jadx-out"
           set +e
           "$RUNNER_TEMP/jadx/bin/jadx" --no-res --show-bad-code -j 4 -d "$OUT" "$APK"
@@ -79,9 +57,9 @@ jobs:
           set -e
           echo "JADX exit status: $JADX_STATUS (non-zero is tolerated only when required package sources are present)"
           SRC="$OUT/sources/com/mlmvpn/scanner"
-          DEST="recovered/$APK_SOURCE"
+          DEST="recovered/upstream-1.2.49"
           mkdir -p "$DEST"
-          for package in engines/argo engines/mami ui/argo ui/mami engines/fenix/arman ui/fenix; do
+          for package in engines/argo engines/mami ui/argo ui/mami; do
             test -d "$SRC/$package" || { echo "Missing decompiled package: $package"; exit 1; }
             mkdir -p "$DEST/$package"
             cp -a "$SRC/$package/." "$DEST/$package/"
@@ -90,13 +68,9 @@ jobs:
           test -s "$DEST/engines/mami/MamiEngine.java"
           test -s "$DEST/ui/argo/ArgoScreenKt.java"
           test -s "$DEST/ui/mami/MamiScreenKt.java"
-          test -s "$DEST/engines/fenix/arman/ArmanEngine.java"
-          test -s "$DEST/engines/fenix/arman/ArmanCore.java"
-          test -s "$DEST/ui/fenix/FenixArmanScreenKt.java"
           {
-            echo "Source: $APK_SOURCE"
-            echo "Exact 1.2.51 SHA-256 (when selected): b2d2d0672b5bcfc1e79d3569650d087f8e55011db3f7fc46575b5bc5843e1cdf"
-            echo "Fallback release: https://github.com/mlmvpn/mlmvpn_android/releases/tag/v1.2.49"
+            echo "Source: official mlmvpn/mlmvpn_android v1.2.49 universal release APK"
+            echo "Release: https://github.com/mlmvpn/mlmvpn_android/releases/tag/v1.2.49"
             echo "Decompiler: JADX v1.5.7"
             echo "This is a GPL-3.0-derived recovery snapshot. Preserve the upstream attribution required by the source repository's license."
             echo
@@ -111,4 +85,4 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add recovered/upstream-1.2.49
           git commit -m "Recover Argo and Mami source snapshot from upstream 1.2.49 APK"
-          git push origin "HEAD:refs/heads/recovered-source-${GITHUB_RUN_ID}"
+          git push origin "HEAD:refs/heads/recovered-argo-mami-${GITHUB_RUN_ID}"
