@@ -24,26 +24,37 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Fetch exact user-provided MLMVPN 1.2.51 APK (SHA-256 pinned)
+      - name: Fetch and verify the exact MLMVPN 1.2.51 DEX payload
         shell: bash
         run: |
           set -euo pipefail
           APK="$RUNNER_TEMP/mlmvpn-1.2.51.apk"
-          # Public download link from the Telegram post carrying the same 1.2.51 APK
-          # previously supplied for this task. Never trust the host without hash verification.
-          if curl -fL --retry 2 --retry-delay 2 \
-              https://guardts.ir/f/07cb9d50fb02 -o "$APK" &&
-              echo "b2d2d0672b5bcfc1e79d3569650d087f8e55011db3f7fc46575b5bc5843e1cdf  $APK" | sha256sum -c -; then
-            echo "Using exact MLMVPN 1.2.51 APK; checksum matches the previously supplied file."
-            echo "APK_SOURCE=MLMVPN-1.2.51-user-upload" >> "$GITHUB_ENV"
-          else
-            echo "::warning::Could not retrieve the pinned 1.2.51 APK; using official 1.2.49 only as a fallback for source reconnaissance."
-            echo "APK_SOURCE=MLMVPN-1.2.49-fallback" >> "$GITHUB_ENV"
-            curl -fL --retry 3 --retry-delay 2 \
-              https://github.com/mlmvpn/mlmvpn_android/releases/download/v1.2.49/mlmvpn-1.2.49-universal-release.apk \
-              -o "$APK"
-          fi
-          unzip -l "$APK" | grep -q 'classes.dex'
+          curl -fL --retry 3 --retry-delay 2 https://guardts.ir/f/07cb9d50fb02 -o "$APK"
+          # The outer APK may be re-signed/repacked by the mirror. Accept it only if
+          # every DEX byte-for-byte matches the previously supplied 1.2.51 APK.
+          python3 - "$APK" <<'PY'
+          import hashlib, pathlib, sys, zipfile
+          apk = pathlib.Path(sys.argv[1])
+          expected = {
+              "classes.dex": "37982383885be7804d517627930ad76e90e6c039803f3de2b131836d08c04904",
+              "classes2.dex": "0580e7587ef60731aac18f6fd16c5fee9f91e0e4f335ca498417991de903774e",
+              "classes3.dex": "cf187b32d8d359397158dc380ef1e43beb40facd4565eb70eb811abb7db0f281",
+              "classes4.dex": "710bf93531611a47ba80c8ce66d2ad58e737be6c78428b451acabe185d1af24f",
+              "classes5.dex": "acd40daeaba7c81de1ef438609d78b572a6dd67ee4643eb72761a38fdfb368c5",
+              "classes6.dex": "7eb2eefeed2d856cdda601a6d16c76c1bd43033a2f4de68561fc3e8c528a5ab2",
+          }
+          with zipfile.ZipFile(apk) as z:
+              names = set(z.namelist())
+              for name, digest in expected.items():
+                  if name not in names:
+                      raise SystemExit(f"APK is not the supplied 1.2.51 DEX set: missing {name}")
+                  actual = hashlib.sha256(z.read(name)).hexdigest()
+                  print(f"{name}: {actual}")
+                  if actual != digest:
+                      raise SystemExit(f"DEX mismatch for {name}; refusing to decompile another build")
+          print("All six DEX files exactly match the previously supplied MLMVPN 1.2.51 APK.")
+          PY
+          echo "APK_SOURCE=MLMVPN-1.2.51-DexVerified" >> "$GITHUB_ENV"
 
       - name: Fetch JADX
         shell: bash
