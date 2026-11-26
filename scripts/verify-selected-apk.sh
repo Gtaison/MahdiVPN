@@ -31,8 +31,9 @@ need_dex_class() {
   if (( found )); then echo "OK CLASS: $descriptor"; else echo "MISSING CLASS: $descriptor"; missing=1; fi
 }
 
-# Argo and Mami are independent, user-requested products. Their code, catalog data,
-# and Argo's JNI backend must travel with the app, not be assumed to exist elsewhere.
+# Argo and Mami are independent, user-requested products. Their code and catalog data
+# must travel with the app. The libarjni/hev pair below is Arman's separate backend,
+# not an Argo substitute. Aether/Tunnel are separately managed runtime dependencies.
 need_file "assets/argo/argo-pool.json"
 need_file "assets/mami/catalog-bootstrap.json"
 # Arman GoMobile backend (not the Argo engine).
