@@ -70,28 +70,7 @@ jobs:
           cd "$SRC/core"
           gomobile bind -target=android/arm,android/arm64 -androidapi 24 -o "$RUNNER_TEMP/argo-core.aar" ./mobile
 
-          python3 - "$RUNNER_TEMP/argo-core.aar" app/libs/argo-core.aar <<'PY'
-          import io, pathlib, sys, zipfile
-          source, target = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
-          required = {
-              "jni/arm64-v8a/libarjni.so",
-              "jni/armeabi-v7a/libarjni.so",
-          }
-          with zipfile.ZipFile(source) as aar:
-              names = set(aar.namelist())
-              missing = required - names
-              if missing:
-                  raise SystemExit(f"Argo AAR missing native libraries: {sorted(missing)}")
-              classes = aar.read("classes.jar")
-              with zipfile.ZipFile(io.BytesIO(classes)) as jar:
-                  java_required = {"mobile/Mobile.class", "ar/Seq.class", "ar/Universe.class"}
-                  missing_java = java_required - set(jar.namelist())
-                  if missing_java:
-                      raise SystemExit(f"Argo AAR missing GoMobile bindings: {sorted(missing_java)}")
-          target.parent.mkdir(parents=True, exist_ok=True)
-          target.write_bytes(source.read_bytes())
-          print(f"Installed {target} ({target.stat().st_size} bytes)")
-          PY
+          python3 scripts/repackage-argo-gomobile-aar.py "$RUNNER_TEMP/argo-core.aar" app/libs/argo-core.aar
 
       - name: Remove Windows-only local JDK settings from CI checkout
         run: |

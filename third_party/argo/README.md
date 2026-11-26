@@ -19,9 +19,16 @@ unverified opaque binary:
 - GoMobile: `v0.0.0-20260908204917-8b95e45f8d3e`
 - License: GPL-3.0
 
-CI builds `core/mobile` as an Android AAR for ARM and ARM64. Keeping the AAR
-rather than only its `.so` is intentional: it also supplies the generated
-`mobile.Mobile`, `ar.Seq`, and `ar.Universe` Java bindings required by JNI.
+CI builds `core/mobile` as an Android AAR for ARM and ARM64. The stock GoMobile
+AAR names its runtime package `go` and its library `libgojni.so`; the original
+MLM APK instead uses `ar.Seq`, `ar.Universe`, and `libarjni.so`. The pinned
+post-processor `scripts/repackage-argo-gomobile-aar.py` performs same-length
+class-file and ELF JNI symbol remapping, then verifies both ABI outputs before
+installing the AAR. This is not a filename-only rename: generated Java load names,
+JNI symbols, class descriptors and AAR entries are remapped together.
+
+Keeping the AAR rather than only its `.so` is intentional: it also supplies the
+generated `mobile.Mobile`, `ar.Seq`, and `ar.Universe` Java bindings required by JNI.
 
 The original APK's extracted library hashes are recorded here for provenance,
 not used as the build output:
