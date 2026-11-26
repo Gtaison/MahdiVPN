@@ -115,7 +115,6 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add recovered/upstream-1.2.49
-          git commit -m "Recover Argo and Mami source snapshot from upstream 1.2.49 APK"
-          git add recovered/upstream-1.2.49-jadx-raw
+          git add recovered/upstream-1.2.49 recovered/upstream-1.2.49-jadx-raw
+          git commit -m "Recover Argo and Mami sources and JADX fallback dumps from upstream 1.2.49 APK"
           git push origin "HEAD:refs/heads/recovered-argo-mami-${GITHUB_RUN_ID}"
