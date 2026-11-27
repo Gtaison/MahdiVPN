@@ -337,8 +337,16 @@ object ArgoProtocolCore {
         return Bridge(host, port, protocol, signatureValid, headers)
     }
 
-    fun extractBridgeBlocks(text: String): List<String> =
-        bridgeBlockRegex.findAll(text).map { it.value }.toList()
+    fun extractBridgeBlocks(text: String): List<String> {
+        val marked = bridgeBlockRegex.findAll(text).map { it.value }.toList()
+        if (marked.isNotEmpty()) return marked
+        // The original client also accepts a bare base64(zlib(JSON)) block copied from
+        // the bridge generator, without the human-readable BEGIN/END markers.
+        val compact = text.filterNot(Char::isWhitespace)
+        return if (compact.startsWith("eJ") && compact.length in 80..16_384 &&
+            compact.matches(Regex("eJ[A-Za-z0-9+/=_-]+"))
+        ) listOf(compact) else emptyList()
+    }
 
     fun extractFalconHosts(text: String, allowUrlLines: Boolean = false): List<String> {
         val excluded = setOf(
@@ -357,7 +365,8 @@ object ArgoProtocolCore {
             }
             line = line.trim().trimStart { !it.isLetterOrDigit() }.trimEnd { !it.isLetterOrDigit() && it != '.' }
             val host = line.lowercase(Locale.ROOT)
-            if (looksLikeHost(host) && host !in excluded) found += host
+            val excludedHost = excluded.any { host == it || host.endsWith(".$it") }
+            if (looksLikeHost(host) && !excludedHost) found += host
         }
         return found.toList()
     }
@@ -369,9 +378,9 @@ object ArgoProtocolCore {
         return buildList {
             for (i in 0 until array.length()) {
                 val item = array.optJSONObject(i) ?: continue
-                val ip = item.optString("ip")
+                val ip = item.optString("serverIp").ifBlank { item.optString("ip") }
                 if (ip.isBlank()) continue
-                add(FalconOrigin(ip, item.optString("countryCode"), item.optDouble("serverLoad", 0.0)))
+                add(FalconOrigin(ip, item.optString("countryCode", item.optString("cc")), item.optDouble("serverLoad", item.optDouble("load", 0.0))))
             }
         }
     }
