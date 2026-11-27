@@ -13,7 +13,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,10 +23,12 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import okhttp3.Dns
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
+import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.Proxy
 import java.net.URL
@@ -181,94 +183,116 @@ object ArgoEngine {
         var lastError = "هیچ سروری پاسخ نداد"
         for ((index, endpoint) in candidates.withIndex()) {
             if (!wantConnected) return
-            _state.value = State(
-                phase = Phase.AUTHENTICATING, step = Step.AUTH,
-                host = endpoint.host, kind = endpoint.kind, mode = mode,
-                message = "احراز هویت با سرور ${index + 1}/${candidates.size}"
-            )
-            try {
-                val session = authenticate(endpoint)
-                val config = buildConfig(endpoint, session)
-                live = Live(endpoint, session, config, mode)
+            val cleanIps = if (endpoint.kind == "falcon") {
+                repository.falconOrigins().sortedBy { it.load }.take(3).map { it.ip }.distinct() + listOf("")
+            } else listOf("")
+            for (connectIp in cleanIps.distinct()) {
+                if (!wantConnected) return
                 _state.value = State(
-                    phase = Phase.STARTING, step = Step.TUNNEL,
-                    host = endpoint.host, kind = endpoint.kind, mode = mode
+                    phase = Phase.AUTHENTICATING, step = Step.AUTH,
+                    host = endpoint.host, kind = endpoint.kind, mode = mode,
+                    message = "احراز هویت با سرور ${index + 1}/${candidates.size}"
                 )
-                if (!launch(config, mode)) {
-                    lastError = if (MyVpnService.connectionPhaseFlow.value == MyVpnService.Phase.FAILED) {
-                        "اندروید اجازهٔ VPN نداد یا سرویس Xray بالا نیامد"
-                    } else {
-                        "موتور Xray بالا نیامد"
-                    }
-                    stopService()
-                    log("${endpoint.host}: $lastError")
-                    continue
-                }
-
-                _state.value = State(
-                    phase = Phase.VERIFYING, step = Step.TRAFFIC,
-                    host = endpoint.host, kind = endpoint.kind, mode = mode
-                )
-                val trace = traceThroughSocks()
-                if (trace != null && trace.second.isNotBlank()) {
+                try {
+                    val session = authenticate(endpoint, connectIp)
+                    val config = buildConfig(endpoint, session, connectIp)
+                    live = Live(endpoint, session, config, mode)
                     _state.value = State(
-                        phase = Phase.CONNECTED, host = endpoint.host, kind = endpoint.kind,
-                        exitCountry = trace.first, exitIp = trace.second,
-                        latencyMs = trace.third, mode = mode
+                        phase = Phase.STARTING, step = Step.TUNNEL,
+                        host = endpoint.host, kind = endpoint.kind, mode = mode
                     )
-                    log("اتصال واقعی برقرار شد؛ خروجی ${trace.first} / ${trace.second}")
-                    return
+                    if (!launch(config, mode)) {
+                        lastError = if (MyVpnService.connectionPhaseFlow.value == MyVpnService.Phase.FAILED) {
+                            "اندروید اجازهٔ VPN نداد یا سرویس Xray بالا نیامد"
+                        } else {
+                            "موتور Xray بالا نیامد"
+                        }
+                        stopService()
+                        log("${endpoint.host}: $lastError")
+                        continue
+                    }
+
+                    _state.value = State(
+                        phase = Phase.VERIFYING, step = Step.TRAFFIC,
+                        host = endpoint.host, kind = endpoint.kind, mode = mode
+                    )
+                    var trace: Triple<String, String, Long>? = null
+                    repeat(3) {
+                        trace = traceThroughSocks()
+                        if (trace != null) return@repeat
+                        delay(1_200)
+                    }
+                    if (trace != null && trace!!.second.isNotBlank()) {
+                        _state.value = State(
+                            phase = Phase.CONNECTED, host = endpoint.host, kind = endpoint.kind,
+                            exitCountry = trace!!.first, exitIp = trace!!.second,
+                            latencyMs = trace!!.third, mode = mode
+                        )
+                        log("اتصال واقعی برقرار شد؛ خروجی ${trace!!.first} / ${trace!!.second}")
+                        return
+                    }
+                    lastError = "موتور بالا آمد ولی ترافیکی از تونل عبور نکرد"
+                    log("${endpoint.host}: $lastError")
+                    stopService()
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (failure: Throwable) {
+                    lastError = failure.message ?: "احراز هویت یا اتصال ناموفق بود"
+                    log("${endpoint.host}: $lastError")
+                    stopService()
                 }
-                lastError = "موتور بالا آمد ولی ترافیکی از تونل عبور نکرد"
-                log("${endpoint.host}: $lastError")
-                stopService()
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (failure: Throwable) {
-                lastError = failure.message ?: "احراز هویت یا اتصال ناموفق بود"
-                log("${endpoint.host}: $lastError")
-                stopService()
             }
         }
         if (wantConnected) fail(lastError)
     }
 
-    private suspend fun authenticate(endpoint: ArgoProtocolCore.Endpoint): ArgoProtocolCore.SessionInfo =
-        withContext(Dispatchers.IO) {
-            val started = System.currentTimeMillis()
-            val requestData = ArgoProtocolCore.authRequest(endpoint.protocol, started)
-            val portPart = if (endpoint.port == 443) "" else ":${endpoint.port}"
-            val request = Request.Builder()
-                .url("https://${endpoint.host}$portPart/")
-                .header("Authorization", requestData.header)
-                .header("User-Agent", "okhttp/4.12.0")
-                .header("Accept", "*/*")
-                .get()
-                .build()
-            authClient.newCall(request).execute().use { response ->
-                val body = response.body?.string().orEmpty()
-                require(body.toByteArray().size <= 65_536) { "پاسخ احراز هویت بیش از اندازه بزرگ است" }
-                require(response.isSuccessful) {
-                    when (response.code) {
-                        401, 403 -> "سرور درخواست احراز هویت را نپذیرفت"
-                        404 -> "این دامنه سرور آرگو نیست"
-                        521, 522, 523, 530 -> "سرور پشت دامنه در دسترس نیست"
-                        else -> "پاسخ نامعتبر سرور (HTTP ${response.code})"
-                    }
+    private suspend fun authenticate(
+        endpoint: ArgoProtocolCore.Endpoint,
+        connectIp: String
+    ): ArgoProtocolCore.SessionInfo = withContext(Dispatchers.IO) {
+        val started = System.currentTimeMillis()
+        val requestData = ArgoProtocolCore.authRequest(endpoint.protocol, started)
+        val portPart = if (endpoint.port == 443) "" else ":${endpoint.port}"
+        val request = Request.Builder()
+            .url("https://${endpoint.host}$portPart/")
+            .header("Authorization", requestData.header)
+            .header("User-Agent", "okhttp/4.12.0")
+            .header("Accept", "*/*")
+            .get()
+            .build()
+        val client = if (connectIp.isBlank()) authClient else authClient.newBuilder()
+            .dns(object : Dns {
+                override fun lookup(hostname: String): List<InetAddress> =
+                    if (hostname.equals(endpoint.host, ignoreCase = true)) {
+                        listOf(InetAddress.getByName(connectIp))
+                    } else Dns.SYSTEM.lookup(hostname)
+            })
+            .build()
+        client.newCall(request).execute().use { response ->
+            val body = response.body?.string().orEmpty()
+            require(body.toByteArray().size <= 65_536) { "پاسخ احراز هویت بیش از اندازه بزرگ است" }
+            require(response.isSuccessful) {
+                when (response.code) {
+                    401, 403 -> "سرور درخواست احراز هویت را نپذیرفت"
+                    404 -> "این دامنه سرور آرگو نیست"
+                    521, 522, 523, 530 -> "سرور پشت دامنه در دسترس نیست"
+                    else -> "پاسخ نامعتبر سرور (HTTP ${response.code})"
                 }
-                val offset = response.header("Date")?.let { date ->
-                    runCatching {
-                        ZonedDateTime.parse(date, DateTimeFormatter.RFC_1123_DATE_TIME).toEpochSecond() -
-                            System.currentTimeMillis() / 1000L
-                    }.getOrNull()
-                } ?: 0L
-                ArgoProtocolCore.openAnswer(requestData, body, offset)
             }
+            val offset = response.header("Date")?.let { date ->
+                runCatching {
+                    ZonedDateTime.parse(date, DateTimeFormatter.RFC_1123_DATE_TIME).toEpochSecond() -
+                        System.currentTimeMillis() / 1000L
+                }.getOrNull()
+            } ?: 0L
+            ArgoProtocolCore.openAnswer(requestData, body, offset)
         }
+    }
 
     private fun buildConfig(
         endpoint: ArgoProtocolCore.Endpoint,
-        session: ArgoProtocolCore.SessionInfo
+        session: ArgoProtocolCore.SessionInfo,
+        connectIp: String = ""
     ): String {
         val context = app ?: error("Argo is not initialized")
         val port = LocalPort.get(context)
@@ -293,12 +317,14 @@ object ArgoEngine {
             .put("settings", JSONObject())
 
         val outbounds = JSONArray()
-            .put(ArgoProtocolCore.xrayOutbound(endpoint, session, "argo", endpoint.host))
+            .put(ArgoProtocolCore.xrayOutbound(endpoint, session, "argo", connectIp))
             .put(JSONObject().put("tag", "direct").put("protocol", "freedom").put("settings", JSONObject()))
             .put(JSONObject().put("tag", "dns-out").put("protocol", "dns").put("settings", JSONObject()))
             .put(JSONObject().put("tag", "blocked").put("protocol", "blackhole").put("settings", JSONObject()))
 
         val rules = JSONArray()
+            .put(JSONObject().put("type", "field").put("port", "53").put("outboundTag", "dns-out"))
+            .put(JSONObject().put("type", "field").put("inboundTag", JSONArray().put("argo-dns")).put("outboundTag", "argo"))
             .put(
                 JSONObject()
                     .put("type", "field")
@@ -313,9 +339,16 @@ object ArgoEngine {
                     .put("outboundTag", "blocked")
             )
         val dns = JSONObject()
-            .put("servers", JSONArray().put("https://8.8.8.8/dns-query").put("https://1.1.1.1/dns-query"))
+            .put("tag", "argo-dns")
+            .put(
+                "servers",
+                JSONArray()
+                    .put(JSONObject().put("address", "https://8.8.8.8/dns-query"))
+                    .put(JSONObject().put("address", "https://1.1.1.1/dns-query"))
+            )
             .put("queryStrategy", "UseIPv4")
         val root = JSONObject()
+            .put("remarks", "Argo")
             .put("log", JSONObject().put("loglevel", "warning"))
             .put("inbounds", JSONArray().put(socks).put(http))
             .put("outbounds", outbounds)
@@ -328,6 +361,9 @@ object ArgoEngine {
         currentCoroutineContext().ensureActive()
         val context = app ?: return false
         val wasUp = MyVpnService.connectionPhaseFlow.value == MyVpnService.Phase.CONNECTED
+        withContext(Dispatchers.IO) {
+            com.mlmvpn.scanner.ui.tunnel.TunnelExclusion.releaseForXray(context)
+        }
         SafeStart.service(context, Intent(context, MyVpnService::class.java).apply {
             putExtra("NODE_URI", config)
             putExtra("MTU_PROFILE", NetworkSettings.Method.V2RAY.id)
