@@ -88,6 +88,22 @@ object ArgoProtocolCore {
 
     data class FalconOrigin(val ip: String, val countryCode: String, val load: Double)
 
+    data class Snowcfg(
+        val keyId: String,
+        val serial: Long,
+        val issuedAtMs: Long,
+        val signatureValid: Boolean,
+        val parameters: JSONObject
+    )
+
+    data class PublicServer(val host: String, val port: Int, val profile: String)
+
+    private val snowSigningKeys = mapOf(
+        "snowcfg" to "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEe9JfBCUoFo1vmiYHLNz0EbAN/xkzFlBrdBFbCGCQ4N41Cjt6c7vNi6dAfJSdn/a39m5AkbBcn9a/ITxMxZNHJQ==",
+        "snowcfg-f" to "MFkwEwYHKoZIzj0DAQcDQgAEfMH+QlcC9f0wsbsHWJYcei+cp4rO2WnTzHcdhQF3OJFP58+I1O/Z/HTJE9GXUZ5SV3WPQgJF8V/YFoObjvmZtw==",
+        "snowcfg-b" to "MFkwEwYHKoZIzj0DAQcDQgAEvOr0llysYNMT+F4fRE0S7Bh/s29X8EXyKIbcZFwXmm2KebR9YvG+nBasKrH0QzZLgxdNDggIqgTdU0wAJXtMJA=="
+    )
+
     /** HKDF-Extract, as used by the original Argo handshake. */
     fun hkdfExtract(algorithm: String, salt: ByteArray, inputKeyMaterial: ByteArray): ByteArray =
         hmac(algorithm, salt, inputKeyMaterial)
@@ -238,6 +254,57 @@ object ArgoProtocolCore {
             .put("protocol", "vmess")
             .put("settings", settings)
             .put("streamSettings", stream)
+    }
+
+    /**
+     * Decode the signed public-server feed used by Argo's built-in source list.
+     * The envelope is v1.<key-id>.<serial>.<issued-at>.<inverted-zlib-params>.<signature>.
+     */
+    fun decodeSnowcfg(text: String): Snowcfg {
+        val parts = text.trim().split('.')
+        require(parts.size == 6 && parts[0] == "v1") { "Not an Argo snowcfg envelope" }
+        val keyId = parts[1]
+        val serial = parts[2].toLongOrNull() ?: 0L
+        val issuedAtMs = (parts[3].toLongOrNull() ?: 0L) * 1000L
+        val signedText = parts.take(5).joinToString(".")
+        val verificationKey = snowSigningKeys[keyId]
+        val signatureValid = verificationKey != null && runCatching {
+            verifyEcdsa(verificationKey, signedText.toByteArray(StandardCharsets.UTF_8), decodeBase64(parts[5].replace('-', '+').replace('_', '/')))
+        }.getOrDefault(false)
+
+        val inverted = decodeBase64(parts[4]).map { (it.toInt().inv() and 0xff).toByte() }.toByteArray()
+        val decoded = JSONObject(String(inflate(inverted, 1_048_576), StandardCharsets.UTF_8))
+        return Snowcfg(
+            keyId = keyId,
+            serial = serial,
+            issuedAtMs = issuedAtMs,
+            signatureValid = signatureValid,
+            parameters = decoded.optJSONObject("parameters") ?: JSONObject()
+        )
+    }
+
+    /** Extract valid public server records from a verified snowcfg parameters object. */
+    fun publicServersOf(parameters: JSONObject): List<PublicServer> {
+        val servers = mutableListOf<PublicServer>()
+        val keys = parameters.keys()
+        while (keys.hasNext()) {
+            val key = keys.next()
+            val match = Regex("^servers?_(ir|global)_", RegexOption.IGNORE_CASE).find(key) ?: continue
+            val raw = parameters.opt(key)
+            val entry = when (raw) {
+                is JSONObject -> raw
+                is String -> runCatching { JSONObject(raw) }.getOrNull()
+                else -> null
+            } ?: continue
+            val host = entry.optString("server").trim().lowercase(Locale.ROOT)
+            if (!looksLikeHost(host)) continue
+            val port = entry.optString("port").toIntOrNull()?.takeIf { it in 1..65535 } ?: 443
+            val profile = entry.optString("profile").ifBlank {
+                if (match.groupValues[1].equals("ir", ignoreCase = true)) "ir" else "global"
+            }
+            servers += PublicServer(host, port, profile)
+        }
+        return servers
     }
 
     /** Decode a signed/unsigned bridge block. An invalid signature is reported, not trusted. */
