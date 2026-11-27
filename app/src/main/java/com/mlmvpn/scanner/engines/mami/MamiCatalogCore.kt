@@ -199,7 +199,7 @@ class MamiCatalogCore {
         val explicit = row.optString("profile")
         if (explicit.isNotBlank()) {
             require(explicit.matches(PROFILE_REGEX)) { "profile" }
-            require(explicit !in KNOWN_PROFILES || version >= 8) { "profile-custom" }
+            require(explicit in KNOWN_PROFILES || version >= 8) { "profile-custom" }
             return explicit
         }
         return when (protocol) {
@@ -213,9 +213,10 @@ class MamiCatalogCore {
     }
 
     private fun safeText(value: String, max: Int, field: String): String {
-        require(value.length <= max) { field }
+        require(value.isNotBlank() && value.length <= max) { field }
+        require(value == value.trim()) { field }
         require(value.none { it.isISOControl() || it == '<' || it == '>' || it in '\u202a'..'\u202e' }) { field }
-        return value.trim()
+        return value
     }
 
     private fun safeInt(value: Any?, min: Int, max: Int, field: String): Int {
