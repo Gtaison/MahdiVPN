@@ -208,6 +208,11 @@ jobs:
           test -s app/src/main/jniLibs/arm64-v8a/libmhrv_rs.so
           test -s app/src/main/jniLibs/armeabi-v7a/libmhrv_rs.so
 
+      - name: Run JVM unit tests
+        env:
+          GRADLE_USER_HOME: ${{ runner.temp }}/gradle-home
+        run: bash ./gradlew --no-daemon :app:testDebugUnitTest
+
       - name: Build debug APKs
         env:
           GRADLE_USER_HOME: ${{ runner.temp }}/gradle-home
