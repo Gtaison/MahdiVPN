@@ -143,17 +143,19 @@ class ArgoPoolRepository(context: Context) {
         val item = if (block != null) {
             val bridge = ArgoProtocolCore.decodeBridgeBlock(block)
             require(bridge.signatureValid) { "امضای بلاک پل آرگو معتبر نیست" }
+            val id = "b:${bridge.host}" + if (bridge.port == 443) "" else ":${bridge.port}"
             addItem(
                 kind = "bridge", host = bridge.host, port = bridge.port, protocol = bridge.protocol,
                 source = "user", from = "manual", seenAt = System.currentTimeMillis()
-            )
+            ) ?: items[id] ?: throw IllegalStateException("ذخیرهٔ پل آرگو ناموفق بود")
         } else {
             val host = ArgoProtocolCore.extractFalconHosts(raw, allowUrlLines = true).firstOrNull()
                 ?: throw IllegalArgumentException("نه بلاک پل آرگو پیدا شد و نه دامنهٔ فالکن")
+            val id = "f:$host"
             addItem(
                 kind = "falcon", host = host, port = 443, protocol = "A",
                 source = "user", from = "manual", seenAt = System.currentTimeMillis()
-            )
+            ) ?: items[id] ?: throw IllegalStateException("ذخیرهٔ دامنهٔ فالکن ناموفق بود")
         }
         saveLocked()
         return item.toEndpoint()
