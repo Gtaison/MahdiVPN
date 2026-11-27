@@ -90,6 +90,39 @@ class ArgoProtocolCoreTest {
     }
 
     @Test
+    fun parsesBundledPoolRowsIntoTypedEndpoints() {
+        val snapshot = JSONObject()
+            .put(
+                "items",
+                org.json.JSONArray()
+                    .put(org.json.JSONArray(listOf("b", "bridge.example.net", 443, "B", "tg:argooo_vpn", 1_700_000_000L, 0, "DE", 1_800_000_000L, "203.0.113.1")))
+                    .put(org.json.JSONArray(listOf("p", "public.example.org", 8443, "A", "argo:config", 1_700_000_000L, "global", "NL", 1_800_000_000L, "203.0.113.2")))
+            )
+            .toString()
+
+        val items = ArgoPoolRepository.parseBundleSnapshot(snapshot)
+        assertEquals(2, items.size)
+        assertEquals("b:bridge.example.net", items[0].id)
+        assertEquals("bridge", items[0].kind)
+        assertEquals("B", items[0].protocol)
+        assertEquals(1_700_000_000_000L, items[0].seenAt)
+        assertEquals("p:public.example.org:8443", items[1].id)
+        assertEquals("global", items[1].profile)
+        assertEquals("NL", items[1].countryCode)
+    }
+
+    @Test
+    fun extractsFalconDomainsWithoutAcceptingKnownServiceDomains() {
+        val hosts = ArgoProtocolCore.extractFalconHosts(
+            "vpn-edge.example.net\nhttps://github.com/example/project\nwww.example.org",
+            allowUrlLines = true
+        )
+        assertTrue(hosts.contains("vpn-edge.example.net"))
+        assertTrue(hosts.contains("www.example.org"))
+        assertFalse(hosts.contains("github.com"))
+    }
+
+    @Test
     fun validatesHostsAndBuildsWebSocketOutbound() {
         assertTrue(ArgoProtocolCore.looksLikeHost("edge.example.net"))
         assertFalse(ArgoProtocolCore.looksLikeHost("192.0.2.1"))
