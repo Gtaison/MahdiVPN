@@ -5,6 +5,7 @@ on:
     branches:
       - feature/lean-vpn-no-warp
       - rebuild/mami-argo-from-clean-base
+      - wip/mami-protocol-rebuild
   workflow_dispatch:
 
 concurrency:
