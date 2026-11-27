@@ -173,6 +173,8 @@ object HomeDestinations {
         HomeApp("flux",              R.string.flux_title_short,   Icons.Default.Bolt,          Indigo, imageRes = R.drawable.ic_app_flux),
         // «FENIX»: the user's own Firefox account's free VPN (Mozilla's servers in 33 countries).
         HomeApp("fenix",             R.string.fenix_title,        Icons.Default.LocalFireDepartment, Orange, imageRes = R.drawable.ic_app_fenix),
+        HomeApp("mami",              R.string.mami_title,         Icons.Default.CloudDownload,  Teal),
+        HomeApp("argo",              R.string.argo_title,         Icons.Default.RocketLaunch,   Indigo),
         // «آمنزیا»: free WireGuard (hidden behind AmneziaWG junk packets) and Hysteria2 servers,
         // plus the user's own .conf files, by country and by real delay.
         HomeApp("amnezia",           R.string.amz_title,          Icons.Default.VpnKey,        Orange, imageRes = R.drawable.ic_app_amnezia),
@@ -288,6 +290,7 @@ object HomeDestinations {
         "scout",
         "masque", "wireguard", "warp_on_warp",
         "psiphon", "tor", "geph", "lantern", "urnetwork", "quick", "flux", "fenix",
+        "mami", "argo",
         "amnezia", "proton", "windscribe", "outline", "npv", "github", "freeconfig", "tgproxy",
         "game", "vpngate", "openvpn", "configstudio", "widgetstudio",
         "store", "antisanction", "iran", "fronting",
@@ -309,7 +312,7 @@ object HomeDestinations {
     }
 
     fun categoryOf(id: String): Category? = when (id) {
-        "masque", "wireguard", "warp_on_warp", "psiphon", "tor", "geph", "lantern", "urnetwork", "quick", "flux", "fenix",
+        "masque", "wireguard", "warp_on_warp", "psiphon", "tor", "geph", "lantern", "urnetwork", "quick", "flux", "fenix", "mami", "argo",
         "amnezia", "proton", "windscribe", "outline", "npv", "github", "vpngate", "openvpn", "nodes" -> Category.CONNECT
         "freeconfig", "iran", "fronting", "sublink", "configstudio", "cloud" -> Category.CONFIGS
         "fixed_ip", "lan", "usage", "tutorial", "store", "scanner", "settings", "scout", "tgproxy", "widgetstudio" -> Category.TOOLS
