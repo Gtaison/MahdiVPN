@@ -31,7 +31,7 @@ class MamiIdentityCore(
         val keyCreatedAt: Long,
         val privateKey: PrivateKey,
         val publicKey: java.security.PublicKey,
-        val publicKeyBase64Url: String,
+        val publicKey: String,
         val publicKeyHash: String
     )
 
@@ -72,7 +72,7 @@ class MamiIdentityCore(
         return Recipient(
             privateKey = pair.private,
             publicKey = publicKey,
-            publicKeyBase64Url = base64Url(encoded),
+            publicKey = base64Url(encoded),
             publicKeyHash = base64Url(sha256(encoded))
         )
     }
