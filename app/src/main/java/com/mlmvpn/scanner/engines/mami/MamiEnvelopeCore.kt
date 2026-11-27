@@ -2,6 +2,7 @@ package com.mlmvpn.scanner.engines.mami
 
 import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonToken
+import android.util.Base64
 import org.json.JSONObject
 import java.io.StringReader
 import java.nio.charset.StandardCharsets
@@ -13,8 +14,6 @@ import java.security.spec.MGF1ParameterSpec
 import java.security.spec.PSource
 import java.security.spec.X509EncodedKeySpec
 import java.security.spec.OAEPParameterSpec
-import java.util.Base64
-import java.util.Locale
 import javax.crypto.Cipher
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
@@ -93,7 +92,7 @@ class MamiEnvelopeCore {
         clockOffsetSec: Long = 0L,
         nowMs: Long = System.currentTimeMillis()
     ): Request {
-        require(payloadVersion in 3..8) { "Unsupported Mami payload version" }
+        require(payloadVersion in 2..8) { "Unsupported Mami payload version" }
         require(minimumRevision in 0..MAX_SAFE_INTEGER) { "Invalid Mami minimum revision" }
         require(audience.matches(AUDIENCE_REGEX)) { "Invalid Mami audience" }
         val nonceBytes = ByteArray(32).also(random::nextBytes)
@@ -111,6 +110,7 @@ class MamiEnvelopeCore {
         val body = JSONObject()
             .put("version", 1)
             .put("payloadVersion", payloadVersion)
+            .put("suite", SUITE)
             .put("audience", audience)
             .put("nonce", nonce)
             .put("minimumRevision", minimumRevision)
@@ -297,13 +297,13 @@ class MamiEnvelopeCore {
 
     private fun strictB64u(value: String, label: String): ByteArray {
         require(value.isNotEmpty() && value.matches(BASE64URL_REGEX)) { "Invalid $label encoding" }
-        val decoded = Base64.getUrlDecoder().decode(value)
+        val decoded = Base64.decode(value, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
         require(base64Url(decoded) == value) { "Non-canonical $label encoding" }
         return decoded
     }
 
     private fun base64Url(value: ByteArray): String =
-        Base64.getUrlEncoder().withoutPadding().encodeToString(value)
+        Base64.encodeToString(value, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
 
     companion object {
         const val SUITE = "P256-SHA256+RSA3072-OAEP256+A256GCM"
