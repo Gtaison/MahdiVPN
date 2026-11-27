@@ -215,7 +215,7 @@ class ArgoPoolRepository(context: Context) {
                         if (addItem(
                                 "public", server.host, server.port, "A",
                                 "argo:config", server.profile, feed.issuedAtMs,
-                                validUntil = feed.issuedAtMs + 30L * DAY_MS
+                                validUntil = 0L
                             ) != null
                         ) publicAdded++
                     }
@@ -344,7 +344,16 @@ class ArgoPoolRepository(context: Context) {
         val id = "${kind.first()}:$normalized" + if (safePort == 443) "" else ":$safePort"
         val existing = items[id]
         if (existing != null) {
-            if (seenAt > existing.seenAt) items[id] = existing.copy(seenAt = seenAt)
+            items[id] = existing.copy(
+                protocol = if (protocol == "B") "B" else "A",
+                source = source,
+                from = from,
+                seenAt = maxOf(existing.seenAt, seenAt),
+                profile = profile.ifBlank { existing.profile },
+                countryCode = countryCode.ifBlank { existing.countryCode },
+                validUntil = validUntil,
+                ip = ip.ifBlank { existing.ip }
+            )
             return null
         }
         return Item(
