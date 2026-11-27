@@ -25,10 +25,28 @@ class MamiXrayConfigCore {
         listen: String = "127.0.0.1",
         logLevel: String = "warning",
         allowHysteriaGecko: Boolean = false
+    ): JSONObject = configFor(outboundFor(server, TAG, allowHysteriaGecko), port, listen, logLevel)
+
+    fun configJson(
+        server: MamiCatalogCore.Server,
+        tag: String = TAG,
+        port: Int,
+        listen: String = "127.0.0.1",
+        logLevel: String = "warning",
+        allowHysteriaGecko: Boolean = false
+    ): String {
+        server.json?.let { return it }
+        return configFor(outboundFor(server, tag, allowHysteriaGecko), port, listen, logLevel).toString()
+    }
+
+    private fun configFor(
+        outbound: JSONObject,
+        port: Int,
+        listen: String,
+        logLevel: String
     ): JSONObject {
         require(port in 1..65_535)
         require(listen.isNotBlank())
-        val outbound = outboundFor(server, TAG, allowHysteriaGecko)
         val inbounds = JSONArray().put(
             JSONObject()
                 .put("tag", "mami-in")
@@ -60,22 +78,6 @@ class MamiXrayConfigCore {
             .put("inbounds", inbounds)
             .put("outbounds", outbounds)
             .put("routing", JSONObject().put("domainStrategy", "AsIs").put("rules", rules))
-    }
-
-    fun configJson(
-        server: MamiCatalogCore.Server,
-        tag: String = TAG,
-        port: Int,
-        listen: String = "127.0.0.1",
-        logLevel: String = "warning",
-        allowHysteriaGecko: Boolean = false
-    ): String {
-        server.json?.let { return it }
-        return configFor(server, port, listen, logLevel, allowHysteriaGecko)
-            .put("outbounds", JSONArray().put(outboundFor(server, tag, allowHysteriaGecko))
-                .put(JSONObject().put("tag", "direct").put("protocol", "freedom"))
-                .put(JSONObject().put("tag", "block").put("protocol", "blackhole")))
-            .toString()
     }
 
     fun unsupportedReason(server: MamiCatalogCore.Server?, allowHysteriaGecko: Boolean = false): String? {
@@ -414,7 +416,7 @@ class MamiXrayConfigCore {
     }
 
     private fun putOptional(target: JSONObject, key: String, value: Any?) {
-        if (value == null || value == "" || value == false || (value is Number && value.toDouble() == 0.0)) return
+        if (value == null || value === JSONObject.NULL || value == "" || value == false || (value is Number && value.toDouble() == 0.0)) return
         target.put(key, value)
     }
 
