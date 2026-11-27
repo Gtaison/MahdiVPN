@@ -36,10 +36,10 @@ class MamiIdentityCore(
     )
 
     data class Recipient(
+        val publicKey: String,
+        val publicKeyHash: String,
         val privateKey: PrivateKey,
-        val publicKey: java.security.PublicKey,
-        val publicKeyBase64Url: String,
-        val publicKeyHash: String
+        val keyPair: KeyPair
     )
 
     private val random = SecureRandom()
@@ -67,13 +67,12 @@ class MamiIdentityCore(
     fun freshRecipient(): Recipient = recipientOf(generateRsa())
 
     fun recipientOf(pair: KeyPair): Recipient {
-        val publicKey = pair.public
-        val encoded = publicKey.encoded
+        val encoded = pair.public.encoded
         return Recipient(
-            privateKey = pair.private,
-            publicKey = publicKey,
             publicKey = base64Url(encoded),
-            publicKeyHash = base64Url(sha256(encoded))
+            publicKeyHash = base64Url(sha256(encoded)),
+            privateKey = pair.private,
+            keyPair = pair
         )
     }
 
