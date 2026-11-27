@@ -2,12 +2,14 @@ package com.mlmvpn.scanner.engines.mami
 
 import android.content.Context
 import android.os.Build
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import kotlinx.coroutines.sync.Mutex
 import org.json.JSONObject
 import java.nio.charset.StandardCharsets
 import java.time.ZonedDateTime
@@ -55,7 +57,7 @@ class MamiApiClient(
     private val deadDrop: MamiDeadDropCore = MamiDeadDropCore()
 ) {
     private val lock = Any()
-    private val sessionLock = Any()
+    private val sessionMutex = Mutex()
     private var boot: JSONObject? = null
     private var trustedKeys: Map<String, java.security.PublicKey> = emptyMap()
     private var stateCache: JSONObject? = null
@@ -177,7 +179,9 @@ class MamiApiClient(
                     "PATCH" -> builder.patch(requestBody ?: ByteArray(0).toRequestBody(contentType.toMediaType()))
                     else -> builder.post(requestBody ?: ByteArray(0).toRequestBody(contentType.toMediaType()))
                 }
-                http.newCall(builder.build()).execute().use { response ->
+                val call = http.newCall(builder.build())
+                call.timeout().timeout(timeoutMs.coerceIn(1_000L, CALL_MS), TimeUnit.MILLISECONDS)
+                call.execute().use { response ->
                     val bytes = response.body?.bytes() ?: ByteArray(0)
                     if (bytes.size > MAX_ANSWER) {
                         throw MamiApiException("too-large", "پاسخ سرور مامی بیش از اندازه بزرگ بود", response.code)
@@ -194,6 +198,8 @@ class MamiApiClient(
                 }
             } catch (failure: MamiApiException) {
                 throw failure
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (failure: Throwable) {
                 errors += "$host: ${failure.message ?: failure.javaClass.simpleName}"
             }
@@ -204,23 +210,24 @@ class MamiApiClient(
         )
     }
 
-    suspend fun ensureSession(forceRegister: Boolean = false): JSONObject = synchronized(sessionLock) {
+    suspend fun ensureSession(forceRegister: Boolean = false): JSONObject {
         init()
-        kotlinx.coroutines.runBlocking {
-            val nowSec = nowSec()
+        sessionMutex.lock()
+        try {
+            val now = nowSec()
             val current = if (forceRegister) null else state().optJSONObject("session")
-            if (current != null && current.optLong("accessExpiresAt") > nowSec + 60L) {
-                return@runBlocking current
-            }
-            if (current != null && current.optLong("refreshExpiresAt") > nowSec) {
+            if (current != null && current.optLong("accessExpiresAt") > now + 60L) return current
+            if (current != null && current.optLong("refreshExpiresAt") > now) {
                 val refreshed = refresh(current)
-                if (refreshed != null) return@runBlocking refreshed
+                if (refreshed != null) return refreshed
             }
             synchronized(lock) {
                 state().remove("session")
                 saveState()
             }
-            register()
+            return register()
+        } finally {
+            sessionMutex.unlock()
         }
     }
 
