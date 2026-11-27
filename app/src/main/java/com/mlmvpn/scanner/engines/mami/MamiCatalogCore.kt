@@ -258,8 +258,8 @@ class MamiCatalogCore {
 
     private fun isBase64UrlBytes(value: String, expected: Int): Boolean = runCatching {
         require(value.matches(BASE64URL_REGEX))
-        val bytes = java.util.Base64.getUrlDecoder().decode(value)
-        bytes.size == expected && java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(bytes) == value
+        val bytes = Base64UrlCodec.decode(value)
+        bytes.size == expected && Base64UrlCodec.encode(bytes) == value
     }.getOrDefault(false)
 
     private fun isShortId(value: String): Boolean =
