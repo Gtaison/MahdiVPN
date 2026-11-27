@@ -2,6 +2,7 @@ package com.mlmvpn.scanner.engines.mami
 
 import android.content.Context
 import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Build
 import android.telephony.TelephonyManager
 import kotlinx.coroutines.CancellationException
@@ -519,7 +520,7 @@ class MamiApiClient(
     private fun networkInfo(): Pair<String, String> {
         val manager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
         val capabilities = manager?.activeNetwork?.let(manager::getNetworkCapabilities)
-        if (capabilities?.hasTransport(ConnectivityManager.TRANSPORT_CELLULAR) == true) {
+        if (capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == true) {
             val operator = runCatching {
                 (context.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager)
                     ?.networkOperator.orEmpty()
