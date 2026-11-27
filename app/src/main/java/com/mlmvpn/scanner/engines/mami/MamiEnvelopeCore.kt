@@ -2,7 +2,6 @@ package com.mlmvpn.scanner.engines.mami
 
 import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonToken
-import android.util.Base64
 import org.json.JSONObject
 import java.io.StringReader
 import java.nio.charset.StandardCharsets
@@ -297,13 +296,13 @@ class MamiEnvelopeCore {
 
     private fun strictB64u(value: String, label: String): ByteArray {
         require(value.isNotEmpty() && value.matches(BASE64URL_REGEX)) { "Invalid $label encoding" }
-        val decoded = Base64.decode(value, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
+        val decoded = Base64UrlCodec.decode(value)
         require(base64Url(decoded) == value) { "Non-canonical $label encoding" }
         return decoded
     }
 
     private fun base64Url(value: ByteArray): String =
-        Base64.encodeToString(value, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
+        Base64UrlCodec.encode(value)
 
     companion object {
         const val SUITE = "P256-SHA256+RSA3072-OAEP256+A256GCM"
