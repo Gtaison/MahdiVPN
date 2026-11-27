@@ -58,7 +58,7 @@ class MamiDeadDropCore(
 
     fun extractDomain(document: String): String? {
         val pattern = Regex(
-            """volutpat\s+([A-Za-z0-9.-]{1,200})\s+Ut wisi enim(?![A-Za-z0-9_])[^\r\n\u2028\u2029]*(?<![A-Za-z0-9_])commodo consequat\.\s*\.?([A-Za-z]{2,24})$""",
+            """volutpat\.[ \t\u000B\u000C\r]+([A-Za-z0-9.-]{1,200})[ \t\u000B\u000C\r]+Ut wisi enim(?![A-Za-z0-9_])[^\n\r\u2028\u2029]*(?<![A-Za-z0-9_])commodo consequat\.[ \t\u000B\u000C\r]+\.?([A-Za-z]{2,24})$""",
             RegexOption.IGNORE_CASE
         )
         document.lineSequence().forEach { raw ->
