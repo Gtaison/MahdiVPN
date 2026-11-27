@@ -153,6 +153,11 @@ class MamiEnvelopeCore {
             "Mami envelope lifetime is too long"
         }
 
+        val nonceBytes = strictB64u(fields.nonce, "nonce")
+        val recipientHashBytes = strictB64u(fields.recipientKeyHash, "recipient key hash")
+        require(nonceBytes.size == 32 && recipientHashBytes.size == 32) {
+            "Invalid Mami request binding field size"
+        }
         val signingKey = trustedKeys[fields.keyId]
             ?: throw IllegalArgumentException("Mami signing key is not trusted")
         val wrappedKey = strictB64u(fields.wrappedKey, "wrapped AES key")
