@@ -1,7 +1,9 @@
 package com.mlmvpn.scanner.engines.mami
 
 import android.content.Context
+import android.net.ConnectivityManager
 import android.os.Build
+import android.telephony.TelephonyManager
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -331,6 +333,8 @@ class MamiApiClient(
                                 trustedKeys = trustedKeys,
                                 clockOffsetSec = clockOffset()
                             )
+                        } catch (cancelled: CancellationException) {
+                            throw cancelled
                         } catch (failure: Throwable) {
                             throw MamiApiException("envelope", "کاتالوگ باز نشد؛ امضا یا رمز پاسخ معتبر نبود: ${failure.message}")
                         }
@@ -512,7 +516,18 @@ class MamiApiClient(
         )
     }
 
-    private fun networkInfo(): Pair<String, String> = "wifi" to ""
+    private fun networkInfo(): Pair<String, String> {
+        val manager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        val capabilities = manager?.activeNetwork?.let(manager::getNetworkCapabilities)
+        if (capabilities?.hasTransport(ConnectivityManager.TRANSPORT_CELLULAR) == true) {
+            val operator = runCatching {
+                (context.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager)
+                    ?.networkOperator.orEmpty()
+            }.getOrDefault("")
+            return "cellular" to operator
+        }
+        return "wifi" to ""
+    }
 
     private fun userAgent(): String =
         "Dalvik/2.1.0 (Linux; U; Android ${Build.VERSION.RELEASE}; ${Build.MODEL} Build/${Build.ID})"
