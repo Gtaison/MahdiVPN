@@ -9,7 +9,6 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.nio.charset.StandardCharsets
-import java.time.OffsetDateTime
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
@@ -256,14 +255,15 @@ class ArgoPoolRepository(context: Context) {
                 val html = fetchText("https://t.me/s/$channel")
                 val posts = parseTelegramPage(html)
                 posts.forEach { post ->
-                    val count = importText(post, "tg:$channel")
-                    synchronized(this@ArgoPoolRepository) {
-                        // Count only records created during this post; importText itself is
-                        // idempotent, so duplicates from overlapping channels are harmless.
+                    val beforeKinds = synchronized(this@ArgoPoolRepository) {
+                        items.values.count { it.kind == "bridge" } to items.values.count { it.kind == "falcon" }
                     }
-                    if (count > 0) {
-                        // Separate counts are calculated from the resulting item types below.
+                    importText(post, "tg:$channel")
+                    val afterKinds = synchronized(this@ArgoPoolRepository) {
+                        items.values.count { it.kind == "bridge" } to items.values.count { it.kind == "falcon" }
                     }
+                    bridgeAdded += (afterKinds.first - beforeKinds.first).coerceAtLeast(0)
+                    falconAdded += (afterKinds.second - beforeKinds.second).coerceAtLeast(0)
                 }
             } catch (failure: Throwable) {
                 errors += "تلگرام @$channel: ${failure.message ?: failure.javaClass.simpleName}"
@@ -275,12 +275,11 @@ class ArgoPoolRepository(context: Context) {
             items.size
         }
         val added = (totalAfter - before).coerceAtLeast(0)
-        val all = allItems()
         UpdateResult(
             added = added,
             publicServers = publicAdded,
-            bridges = all.count { it.kind == "bridge" },
-            falcons = all.count { it.kind == "falcon" },
+            bridges = bridgeAdded,
+            falcons = falconAdded,
             errors = errors,
             completedAt = System.currentTimeMillis()
         )
