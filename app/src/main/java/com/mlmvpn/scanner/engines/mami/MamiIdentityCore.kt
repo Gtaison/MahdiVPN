@@ -1,6 +1,7 @@
 package com.mlmvpn.scanner.engines.mami
 
 import android.content.Context
+import android.util.Base64
 import org.json.JSONObject
 import java.nio.charset.StandardCharsets
 import java.security.KeyFactory
@@ -9,137 +10,179 @@ import java.security.KeyPairGenerator
 import java.security.MessageDigest
 import java.security.PrivateKey
 import java.security.SecureRandom
+import java.security.interfaces.RSAPrivateCrtKey
 import java.security.spec.PKCS8EncodedKeySpec
+import java.security.spec.RSAKeyGenParameterSpec
+import java.security.spec.RSAPublicKeySpec
 import java.util.Locale
-import java.util.Base64
 
 /**
- * Mami device identity and short-lived RSA response recipients.
- *
- * The persistent identity is deliberately independent of Android's advertising identifiers.
- * The API's device id is derived from a random local Android-id surrogate and the upstream
- * client package namespace, matching the original Mami client format.
+ * Mami identity implementation compatible with the identity.json format used by the
+ * original client. The long-lived device identity and its RSA key are persisted locally.
  */
 class MamiIdentityCore(
-    private val context: Context,
+    context: Context,
     private val store: MamiStore = MamiStore(context)
 ) {
     data class Identity(
-        val androidId: String,
         val deviceId: String,
+        val androidId: String,
         val createdAt: Long,
         val keyCreatedAt: Long,
-        val privateKeyPem: String
+        val privateKey: PrivateKey,
+        val publicKey: java.security.PublicKey,
+        val publicKeyBase64Url: String,
+        val publicKeyHash: String
     )
 
     data class Recipient(
-        val publicKey: String,
-        val publicKeyHash: String,
         val privateKey: PrivateKey,
-        val keyPair: KeyPair
+        val publicKey: java.security.PublicKey,
+        val publicKeyBase64Url: String,
+        val publicKeyHash: String
     )
 
     private val random = SecureRandom()
 
     @Synchronized
     fun loadOrCreate(): Identity {
-        val saved = store.readJson(IDENTITY_FILE)
-        val restored = saved?.let(::identityFromJson)
-        if (restored != null) return restored
+        store.readJson(IDENTITY_FILE)?.let(::materialize)?.let { return it }
 
         val now = System.currentTimeMillis()
         val androidId = newAndroidId()
-        val deviceId = deviceIdFor(androidId, UPSTREAM_PACKAGE)
         val pair = generateRsa()
-        val privatePem = privateKeyToPem(pair.private.encoded)
-        val identity = Identity(androidId, deviceId, now, now, privatePem)
-        store.writeJson(IDENTITY_FILE, identityToJson(identity))
-        return identity
+        val record = record(
+            androidId = androidId,
+            deviceId = deviceIdFor(androidId),
+            createdAt = now,
+            keyCreatedAt = now,
+            privateKey = pair.private
+        )
+        store.writeJson(IDENTITY_FILE, record)
+        return materialize(record)
+            ?: throw IllegalStateException("The new Mami identity could not be loaded")
     }
 
-    /** Creates the per-request RSA-3072 key pair used to decrypt one catalog envelope. */
-    fun freshRecipient(): Recipient = describePublicKey(generateRsa())
+    /** Per-request RSA-3072 recipient used by the signed catalog envelope. */
+    fun freshRecipient(): Recipient = recipientOf(generateRsa())
 
-    fun describePublicKey(pair: KeyPair): Recipient {
-        val der = pair.public.encoded
+    fun recipientOf(pair: KeyPair): Recipient {
+        val publicKey = pair.public
+        val encoded = publicKey.encoded
         return Recipient(
-            publicKey = base64Url(der),
-            publicKeyHash = base64Url(sha256(der)),
             privateKey = pair.private,
-            keyPair = pair
+            publicKey = publicKey,
+            publicKeyBase64Url = base64Url(encoded),
+            publicKeyHash = base64Url(sha256(encoded))
         )
     }
 
     fun deviceIdFor(androidId: String, packageName: String = UPSTREAM_PACKAGE): String {
-        require(isAndroidId(androidId))
-        require(packageName.matches(Regex("[A-Za-z0-9_.]{1,160}")))
-        val material = "YAMYAM-DEVICE-ID-V1" + '\u0000' + packageName + '\u001f' + androidId.lowercase(Locale.ROOT)
+        require(isAndroidId(androidId)) { "android id has the wrong shape" }
+        require(isPackage(packageName)) { "package name has the wrong shape" }
+        // Chromium's MULTI_COOKIE_VALUE_SEPARATOR used by the original implementation is NUL.
+        val material = "YAMYAM-DEVICE-ID-V1\u0000" + packageName + "\u0000" +
+            androidId.lowercase(Locale.ROOT)
         return "dv1_" + base64Url(sha256(material.toByteArray(StandardCharsets.UTF_8)))
     }
 
     fun isAndroidId(value: String): Boolean =
-        value.matches(Regex("[0-9a-fA-F]{16,64}")) &&
-            !value.equals("9774d56d682e549c", ignoreCase = true)
+        value.length in 16..64 &&
+            value.all { it in '0'..'9' || it in 'a'..'f' || it in 'A'..'F' } &&
+            !value.equals(BAD_ANDROID_ID, ignoreCase = true)
 
     fun newAndroidId(): String {
         val bytes = ByteArray(8)
-        random.nextBytes(bytes)
-        return bytes.joinToString("") { "%02x".format(it.toInt() and 0xff) }
+        var value: String
+        do {
+            random.nextBytes(bytes)
+            value = bytes.joinToString("") { "%02x".format(it.toInt() and 0xff) }
+        } while (value == BAD_ANDROID_ID)
+        return value
     }
 
     fun generateRsa(): KeyPair =
-        KeyPairGenerator.getInstance("RSA").apply { initialize(RSA_BITS, random) }.generateKeyPair()
+        KeyPairGenerator.getInstance("RSA").apply {
+            initialize(RSAKeyGenParameterSpec(RSA_BITS, RSAKeyGenParameterSpec.F4), random)
+        }.generateKeyPair()
 
-    fun privateKeyFromPem(pem: String): PrivateKey {
+    fun privateKeyOfPem(pem: String): PrivateKey {
         val body = pem
             .replace("-----BEGIN PRIVATE KEY-----", "")
             .replace("-----END PRIVATE KEY-----", "")
             .filterNot(Char::isWhitespace)
-        val der = Base64.getDecoder().decode(body)
+        val der = Base64.decode(body, Base64.DEFAULT)
         return KeyFactory.getInstance("RSA").generatePrivate(PKCS8EncodedKeySpec(der))
     }
 
-    private fun identityFromJson(json: JSONObject): Identity? = runCatching {
-        require(json.optInt("version") == 1)
+    fun pemOf(privateKey: PrivateKey): String {
+        val encoded = Base64.encodeToString(privateKey.encoded, Base64.NO_WRAP)
+        return "-----BEGIN PRIVATE KEY-----\n" +
+            encoded.chunked(64).joinToString("\n") +
+            "\n-----END PRIVATE KEY-----\n"
+    }
+
+    private fun materialize(json: JSONObject): Identity? = runCatching {
+        require(json.optInt("v") == 1)
         val androidId = json.getString("androidId")
         require(isAndroidId(androidId))
         val deviceId = json.getString("deviceId")
-        require(deviceId == deviceIdFor(androidId, UPSTREAM_PACKAGE))
-        val privatePem = json.getString("privateKeyPem")
-        val privateKey = privateKeyFromPem(privatePem)
-        require(privateKey.algorithm.equals("RSA", ignoreCase = true))
+        require(deviceId == deviceIdFor(androidId))
+
+        val privateKey = privateKeyOfPem(json.getString("privateKey"))
+        val rsaPrivate = privateKey as? RSAPrivateCrtKey
+            ?: throw IllegalArgumentException("Mami identity key is not RSA CRT")
+        require(rsaPrivate.modulus.bitLength() == RSA_BITS)
+
+        val publicKey = KeyFactory.getInstance("RSA").generatePublic(
+            RSAPublicKeySpec(rsaPrivate.modulus, rsaPrivate.publicExponent)
+        )
+        val publicBytes = publicKey.encoded
+        val createdAt = json.optLong("createdAt", 0L)
+        val storedKeyTime = json.optLong("keyCreatedAt", 0L)
+        val keyCreatedAt = if (storedKeyTime != 0L) storedKeyTime else createdAt
+
         Identity(
-            androidId = androidId,
             deviceId = deviceId,
-            createdAt = json.getLong("createdAt"),
-            keyCreatedAt = json.getLong("keyCreatedAt"),
-            privateKeyPem = privatePem
+            androidId = androidId,
+            createdAt = createdAt,
+            keyCreatedAt = keyCreatedAt,
+            privateKey = privateKey,
+            publicKey = publicKey,
+            publicKeyBase64Url = base64Url(publicBytes),
+            publicKeyHash = base64Url(sha256(publicBytes))
         )
     }.getOrNull()
 
-    private fun identityToJson(identity: Identity): JSONObject =
-        JSONObject()
-            .put("version", 1)
-            .put("androidId", identity.androidId)
-            .put("deviceId", identity.deviceId)
-            .put("createdAt", identity.createdAt)
-            .put("keyCreatedAt", identity.keyCreatedAt)
-            .put("privateKeyPem", identity.privateKeyPem)
+    private fun record(
+        androidId: String,
+        deviceId: String,
+        createdAt: Long,
+        keyCreatedAt: Long,
+        privateKey: PrivateKey
+    ): JSONObject = JSONObject()
+        .put("v", 1)
+        .put("androidId", androidId)
+        .put("deviceId", deviceId)
+        .put("createdAt", createdAt)
+        .put("keyCreatedAt", keyCreatedAt)
+        .put("privateKey", pemOf(privateKey))
 
-    private fun privateKeyToPem(der: ByteArray): String {
-        val encoded = Base64.getMimeEncoder(64, "\n".toByteArray()).encodeToString(der)
-        return "-----BEGIN PRIVATE KEY-----\n" + encoded + "\n-----END PRIVATE KEY-----"
-    }
+    private fun isPackage(value: String): Boolean =
+        value.length in 3..200 && value.all {
+            it in 'A'..'Z' || it in 'a'..'z' || it in '0'..'9' || it == '_' || it == '.'
+        }
 
     private fun sha256(value: ByteArray): ByteArray =
         MessageDigest.getInstance("SHA-256").digest(value)
 
     private fun base64Url(value: ByteArray): String =
-        Base64.getUrlEncoder().withoutPadding().encodeToString(value)
+        Base64.encodeToString(value, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
 
     companion object {
-        private const val IDENTITY_FILE = "identity.json"
-        private const val UPSTREAM_PACKAGE = "com.yamyam.vpn"
-        private const val RSA_BITS = 3072
+        const val IDENTITY_FILE = "identity.json"
+        const val UPSTREAM_PACKAGE = "com.yamyam.vpn"
+        const val BAD_ANDROID_ID = "9774d56d682e549c"
+        const val RSA_BITS = 3072
     }
 }
