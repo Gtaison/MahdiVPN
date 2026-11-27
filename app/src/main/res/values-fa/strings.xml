@@ -5541,4 +5541,24 @@
     <string name="widget_studio_large">ویجت استدیو · بزرگ</string>
     <string name="screen_missing_on_device">این دستگاه صفحه‌ای را که اندروید برای این کار لازم دارد ندارد (برای VPN: پنجرهٔ اجازهٔ VPN سیستم). بعضی تی‌وی‌باکس‌ها و پروژکتورها آن را ندارند.</string>
     <string name="clip_too_large">این مقدار را نمی‌شود یک‌جا کپی کرد (کلیپ‌بورد اندروید حدود ۱ مگابایت جا دارد). موارد کمتری انتخاب کنید، یا به‌جای کپی در فایل ذخیره کنید.</string>
+
+    <string name="argo_title">آرگو</string>
+    <string name="argo_status">وضعیت اتصال</string>
+    <string name="argo_connected">متصل</string>
+    <string name="argo_refreshing">در حال به‌روزرسانی منابع</string>
+    <string name="argo_authenticating">در حال احراز هویت با سرور</string>
+    <string name="argo_starting">در حال راه‌اندازی تونل Xray</string>
+    <string name="argo_verifying">در حال بررسی عبور واقعی ترافیک</string>
+    <string name="argo_stopping">در حال قطع اتصال</string>
+    <string name="argo_failed">اتصال ناموفق بود</string>
+    <string name="argo_idle">آمادهٔ اتصال</string>
+    <string name="argo_pool_summary">مجموع: %1$d · پل‌ها: %2$d · عمومی: %3$d · فالکن: %4$d · IPهای فالکن: %5$d</string>
+    <string name="argo_connect">اتصال</string>
+    <string name="argo_disconnect">قطع اتصال</string>
+    <string name="argo_refresh">به‌روزرسانی منابع</string>
+    <string name="argo_manual_label">بلاک پل امضاشده یا دامنهٔ فالکن (اختیاری)</string>
+    <string name="argo_manual_hint">بلاک پل امضاشده یا دامنه را وارد کنید</string>
+    <string name="argo_logs">گزارش اتصال</string>
+    <string name="argo_no_logs">هنوز گزارشی ثبت نشده است.</string>
+
 </resources>
