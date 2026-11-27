@@ -2,7 +2,7 @@ package com.mlmvpn.scanner.engines.mami
 
 import org.json.JSONArray
 import org.json.JSONObject
-import java.util.Base64
+import android.util.Base64
 
 /** Builds Xray-compatible outbound and full tunnel JSON for every supported Mami profile. */
 class MamiXrayConfigCore {
@@ -411,7 +411,7 @@ class MamiXrayConfigCore {
     }
 
     private fun hexOfPin(value: String): String {
-        val bytes = Base64.getUrlDecoder().decode(value)
+        val bytes = Base64.decode(value, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
         return bytes.joinToString("") { "%02x".format(it.toInt() and 0xff) }
     }
 
