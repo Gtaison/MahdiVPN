@@ -67,6 +67,29 @@ class ArgoProtocolCoreTest {
     }
 
     @Test
+    fun decodesSnowcfgAndExtractsServerRecordsWithoutTrustingBadSignatures() {
+        val parameters = JSONObject()
+            .put("servers_ir_primary", JSONObject().put("server", "ir.example.net").put("port", 8443))
+            .put("servers_global_primary", JSONObject().put("server", "global.example.org").put("port", 443))
+        val payload = JSONObject().put("parameters", parameters).toString().toByteArray(StandardCharsets.UTF_8)
+        val compressed = java.io.ByteArrayOutputStream().also { output ->
+            java.util.zip.DeflaterOutputStream(output).use { it.write(payload) }
+        }.toByteArray()
+        val inverted = compressed.map { (it.toInt().inv() and 0xff).toByte() }.toByteArray()
+        val encodedPayload = Base64.getEncoder().encodeToString(inverted)
+        val envelope = "v1.snowcfg.9.1700000000.$encodedPayload.AAAA"
+
+        val decoded = ArgoProtocolCore.decodeSnowcfg(envelope)
+        assertEquals(9L, decoded.serial)
+        assertEquals(1_700_000_000_000L, decoded.issuedAtMs)
+        assertFalse(decoded.signatureValid)
+        val servers = ArgoProtocolCore.publicServersOf(decoded.parameters)
+        assertEquals(2, servers.size)
+        assertTrue(servers.any { it.host == "ir.example.net" && it.port == 8443 })
+        assertTrue(servers.any { it.host == "global.example.org" && it.port == 443 })
+    }
+
+    @Test
     fun validatesHostsAndBuildsWebSocketOutbound() {
         assertTrue(ArgoProtocolCore.looksLikeHost("edge.example.net"))
         assertFalse(ArgoProtocolCore.looksLikeHost("192.0.2.1"))
