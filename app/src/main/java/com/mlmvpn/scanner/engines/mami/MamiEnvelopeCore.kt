@@ -10,10 +10,10 @@ import java.security.PublicKey
 import java.security.Signature
 import java.security.interfaces.ECPublicKey
 import java.security.spec.MGF1ParameterSpec
-import java.security.spec.PSource
 import java.security.spec.X509EncodedKeySpec
-import java.security.spec.OAEPParameterSpec
 import javax.crypto.Cipher
+import javax.crypto.spec.OAEPParameterSpec
+import javax.crypto.spec.PSource
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
