@@ -340,6 +340,28 @@ object ArgoProtocolCore {
     fun extractBridgeBlocks(text: String): List<String> =
         bridgeBlockRegex.findAll(text).map { it.value }.toList()
 
+    fun extractFalconHosts(text: String, allowUrlLines: Boolean = false): List<String> {
+        val excluded = setOf(
+            "t.me", "telegram.org", "telegram.me", "argovpn.com", "google.com", "youtube.com",
+            "youtu.be", "instagram.com", "twitter.com", "x.com", "github.com",
+            "githubusercontent.com", "apple.com", "play.google.com", "cafebazaar.ir",
+            "myket.ir", "bit.ly", "tinyurl.com", "aparat.com", "wikipedia.org",
+            "whatsapp.com", "cloudflare.com", "workers.dev", "pages.dev"
+        )
+        val found = linkedSetOf<String>()
+        text.lineSequence().forEach { rawLine ->
+            var line = rawLine.replace(Regex("[\\u200c\\u200f\\u200e\\u202a-\\u202e]"), "").trim()
+            if (allowUrlLines) {
+                line = line.replace(Regex("^https?://", RegexOption.IGNORE_CASE), "")
+                    .substringBefore('/').substringBefore(':')
+            }
+            line = line.trim().trimStart { !it.isLetterOrDigit() }.trimEnd { !it.isLetterOrDigit() && it != '.' }
+            val host = line.lowercase(Locale.ROOT)
+            if (looksLikeHost(host) && host !in excluded) found += host
+        }
+        return found.toList()
+    }
+
     /** Falcon server lists are base64, byte-inverted, then zlib-compressed JSON. */
     fun decodeFalconServers(encoded: String): List<FalconOrigin> {
         val inverted = decodeBase64(encoded.trim()).map { (it.toInt().inv() and 0xff).toByte() }.toByteArray()
