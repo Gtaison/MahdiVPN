@@ -176,7 +176,7 @@ class MamiIdentityCore(
         MessageDigest.getInstance("SHA-256").digest(value)
 
     private fun base64Url(value: ByteArray): String =
-        Base64.encodeToString(value, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
+        Base64UrlCodec.encode(value)
 
     companion object {
         const val IDENTITY_FILE = "identity.json"
