@@ -44,7 +44,7 @@ private val FEATURE_BAR_HEIGHT = 56.dp
 private val SELF_HEADED = setOf(
     "settings", "vpn_settings", "usage", "tutorial", "nodes", "cloud", "scanner", "quick", "game", "sublink", "fixed_ip", "vpngate", "freeconfig", "lan",
     "configstudio", "github", "store", "openvpn", "flux", "fenix", "cfdoctor", "amnezia", "proton", "windscribe", "outline", "scout", "tgproxy",
-    "npv", "widgetstudio",
+    "npv", "widgetstudio", "argo",
     // The five transports. Each draws an iOS navigation bar of its own, and pushes pages under
     // it that carry their own back chevron -- the app chrome on top would be a second one.
 ) + com.mlmvpn.scanner.ui.tunnel.Transport.IDS
@@ -528,6 +528,13 @@ fun AppScreen() {
                         Box(modifier = Modifier.fillMaxSize().offset(x = if (activeTab == "fenix") 0.dp else 10000.dp)) {
                             CompositionLocalProvider(LocalTabVisible provides (activeTab == "fenix")) {
                                 com.mlmvpn.scanner.ui.fenix.FenixScreen(onBack = { goBack() })
+                            }
+                        }
+                    }
+                    if (visitedTabs.contains("argo")) {
+                        Box(modifier = Modifier.fillMaxSize().offset(x = if (activeTab == "argo") 0.dp else 10000.dp)) {
+                            CompositionLocalProvider(LocalTabVisible provides (activeTab == "argo")) {
+                                com.mlmvpn.scanner.ui.argo.ArgoScreen(onBack = { goBack() })
                             }
                         }
                     }
