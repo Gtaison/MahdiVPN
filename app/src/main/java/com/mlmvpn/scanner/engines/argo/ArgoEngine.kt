@@ -54,6 +54,14 @@ object ArgoEngine {
     enum class Phase { IDLE, REFRESHING, AUTHENTICATING, STARTING, VERIFYING, CONNECTED, FAILED, STOPPING }
     enum class Step { POOL, AUTH, TUNNEL, TRAFFIC }
 
+    data class PoolStats(
+        val total: Int,
+        val bridges: Int,
+        val publicServers: Int,
+        val falcons: Int,
+        val falconOrigins: Int
+    )
+
     data class State(
         val phase: Phase = Phase.IDLE,
         val step: Step? = null,
@@ -150,6 +158,44 @@ object ArgoEngine {
     fun freshConfig(context: Context): String? {
         init(context)
         return live?.config
+    }
+
+    fun poolStats(context: Context): PoolStats {
+        init(context)
+        val repository = pool ?: return PoolStats(0, 0, 0, 0, 0)
+        val items = repository.allItems()
+        return PoolStats(
+            total = items.size,
+            bridges = items.count { it.kind == "bridge" },
+            publicServers = items.count { it.kind == "public" },
+            falcons = items.count { it.kind == "falcon" },
+            falconOrigins = repository.falconOrigins().size
+        )
+    }
+
+    fun refreshAsync(context: Context): Job {
+        init(context)
+        return scope.launch {
+            val before = _state.value
+            if (!before.connected) {
+                _state.value = State(phase = Phase.REFRESHING, step = Step.POOL, message = "به‌روزرسانی منابع آرگو")
+            }
+            try {
+                val result = (pool ?: error("Argo pool is not initialized")).refresh { log(it) }
+                log("منابع به‌روز شدند: ${result.added} مورد تازه")
+                if (!before.connected) {
+                    _state.value = State(
+                        phase = Phase.IDLE,
+                        message = "به‌روزرسانی انجام شد؛ ${result.added} مورد تازه"
+                    )
+                }
+            } catch (failure: Throwable) {
+                if (!before.connected) {
+                    _state.value = State(phase = Phase.FAILED, message = failure.message ?: "به‌روزرسانی ناموفق بود")
+                }
+                log("به‌روزرسانی منابع ناموفق بود: ${failure.message}")
+            }
+        }
     }
 
     fun log(message: String) {
