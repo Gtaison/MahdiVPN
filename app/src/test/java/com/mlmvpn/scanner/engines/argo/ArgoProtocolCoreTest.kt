@@ -90,6 +90,30 @@ class ArgoProtocolCoreTest {
     }
 
     @Test
+    fun decodesFalconOriginFeedUsingPublishedFieldNames() {
+        val payload = org.json.JSONArray()
+            .put(
+                JSONObject()
+                    .put("serverIp", "203.0.113.10")
+                    .put("countryCode", "DE")
+                    .put("serverLoad", 4)
+            )
+            .toString()
+            .toByteArray(StandardCharsets.UTF_8)
+        val compressed = java.io.ByteArrayOutputStream().also { output ->
+            java.util.zip.DeflaterOutputStream(output).use { it.write(payload) }
+        }.toByteArray()
+        val inverted = compressed.map { (it.toInt().inv() and 0xff).toByte() }.toByteArray()
+        val encoded = Base64.getEncoder().encodeToString(inverted)
+
+        val origins = ArgoProtocolCore.decodeFalconServers(encoded)
+        assertEquals(1, origins.size)
+        assertEquals("203.0.113.10", origins.single().ip)
+        assertEquals("DE", origins.single().countryCode)
+        assertEquals(4.0, origins.single().load, 0.0)
+    }
+
+    @Test
     fun parsesBundledPoolRowsIntoTypedEndpoints() {
         val snapshot = JSONObject()
             .put(
