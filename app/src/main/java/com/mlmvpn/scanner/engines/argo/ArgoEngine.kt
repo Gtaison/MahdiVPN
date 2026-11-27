@@ -217,10 +217,10 @@ object ArgoEngine {
                         host = endpoint.host, kind = endpoint.kind, mode = mode
                     )
                     var trace: Triple<String, String, Long>? = null
-                    repeat(3) {
+                    for (attempt in 0 until 3) {
                         trace = traceThroughSocks()
-                        if (trace != null) return@repeat
-                        delay(1_200)
+                        if (trace != null) break
+                        if (attempt < 2) delay(1_200)
                     }
                     if (trace != null && trace!!.second.isNotBlank()) {
                         _state.value = State(
