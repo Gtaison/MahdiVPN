@@ -4,6 +4,7 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.selects.onAwait
 import kotlinx.coroutines.selects.select
 import okhttp3.OkHttpClient
 import okhttp3.Request
