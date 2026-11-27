@@ -5549,4 +5549,24 @@ After that it builds the combinations itself, measures every one with a real req
     <string name="widget_studio_large">Widget Studio · Large</string>
     <string name="screen_missing_on_device">This device does not have the screen Android needs for this (for a VPN: the system\'s VPN permission dialog). Some TV boxes and projectors leave it out.</string>
     <string name="clip_too_large">Too much to copy at once (Android\'s clipboard takes about 1 MB). Select fewer items, or save them to a file instead.</string>
+
+    <string name="argo_title">Argo</string>
+    <string name="argo_status">Connection status</string>
+    <string name="argo_connected">Connected</string>
+    <string name="argo_refreshing">Refreshing sources</string>
+    <string name="argo_authenticating">Authenticating with endpoint</string>
+    <string name="argo_starting">Starting Xray tunnel</string>
+    <string name="argo_verifying">Verifying traffic through tunnel</string>
+    <string name="argo_stopping">Disconnecting</string>
+    <string name="argo_failed">Connection failed</string>
+    <string name="argo_idle">Ready to connect</string>
+    <string name="argo_pool_summary">Pool: %1$d total · %2$d bridges · %3$d public · %4$d Falcon · %5$d Falcon IPs</string>
+    <string name="argo_connect">Connect</string>
+    <string name="argo_disconnect">Disconnect</string>
+    <string name="argo_refresh">Refresh sources</string>
+    <string name="argo_manual_label">Signed bridge block or Falcon host (optional)</string>
+    <string name="argo_manual_hint">Paste a signed bridge block or hostname</string>
+    <string name="argo_logs">Connection log</string>
+    <string name="argo_no_logs">No log entries yet.</string>
+
 </resources>
