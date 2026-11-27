@@ -31,7 +31,7 @@ class MamiIdentityCore(
         val keyCreatedAt: Long,
         val privateKey: PrivateKey,
         val publicKey: java.security.PublicKey,
-        val publicKey: String,
+        val publicKeyBase64Url: String,
         val publicKeyHash: String
     )
 
