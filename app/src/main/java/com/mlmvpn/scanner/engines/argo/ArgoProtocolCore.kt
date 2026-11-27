@@ -35,7 +35,7 @@ object ArgoProtocolCore {
     // Public protocol keys shipped by the 1.2.51 client. These are public verification /
     // encryption keys, not private credentials.
     private const val RSA_SPKI =
-        "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAz/M4JOwjHadx2Z2ZsZZOATv0sT+YCtleYy4BPBBYA1KKypT59gVc5y1geVIbV6ssktTGnWE7q2BQsKG6QLZ13Xzdc/uYHm8hcQewlsUrh5i3qs9kyZSHXV9TqPna4sKX9pVxMxO+PfUWABzygRgDdpP3x/Y8my7oh3NVbRKrWrabcAtuyL3mdQGCWHooaVQfYttLWBuCSDUF8C5AnDUNQ5DnOrQFt8bKMQoqt7aj97Ecf2TiU0jxUAKt5QpmuS+Yjrny6/U7aCFU9iP+uQFwKNBRpxwlR/OS4mIq9gCWkrI7FWJ2i4AGU878IwiwGKYwvJK2Pyk3+6fW4dVg7+K+6B7QIDAQAB"
+        "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAz/M4JOwjHadx2ZsZZOATv0sT+YCtleYy4BPBBYA1KKypT59gVc5y1geVIbV6ssktTGnWE7q2BQsKG6QLZ13Xzdc/uYHm8hcQewlsUrh5i3qs9kyZSHXV9TqPna4sKX9pVxMxO+PfUWABzygRgDdpP3x/Y8my7oh3NVbRKrWrabcAtuyL3mdQGCWHooaVQfYttLWBuCSDUF8C5AnDUNQ5DnOrQFt8bKMQoqt7aj97Ecf2TiU0jxUAKt5QpmuS+Yjrny6/U7aCFU9iP+uQFwKNBRpxwlR/OS4mIq9gCWkrI7FWJ2i4AGU878IwiwGKYwvJK2Pyk3+6fW4dVg7+K+6B7QIDAQAB"
 
     const val BRIDGE_KEY_SPKI =
         "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEwVEhfRU709R1WPT3cVgu2beUJGJ7OHk27uQjfc6PxpLdg+GKqm/t8c2GMH6FCgcRsB+s8FH+YD8gXiiE5b4g/Q=="
